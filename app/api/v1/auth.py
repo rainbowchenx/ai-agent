@@ -23,10 +23,8 @@ security = HTTPBearer()
 db_service = DatabaseService()  # 数据库服务，存储用户、会话、消息等数据
 
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> User:
-    """从令牌中获取当前用户ID
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
+    """从token中获取当前用户ID
     Args:
         credentials: 包含JWT token的字段
     Returns:
@@ -68,9 +66,7 @@ async def get_current_user(
         )
 
 
-async def get_current_session(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> Session:
+async def get_current_session(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Session:
     """从令牌中获取当前会话ID
 
     Args:

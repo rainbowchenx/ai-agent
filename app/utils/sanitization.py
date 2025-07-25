@@ -1,54 +1,48 @@
-"""This file contains the sanitization utilities for the application."""
+"""数据清洗工具类，用于防止XSS攻击和注入攻击。"""
 
 import html
 import re
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Union,
-)
+from typing import Any, Dict, List, Optional, Union
 
 
 def sanitize_string(value: str) -> str:
-    """Sanitize a string to prevent XSS and other injection attacks.
+    """清洗字符串，防止XSS和注入攻击。
 
     Args:
-        value: The string to sanitize
+        value: 要清洗的字符串
 
     Returns:
-        str: The sanitized string
+        str: 清洗后的字符串
     """
-    # Convert to string if not already
+    # 如果value不是字符串，则转换为字符串
     if not isinstance(value, str):
         value = str(value)
 
-    # HTML escape to prevent XSS
+    # html转成字符串，防止XSS
     value = html.escape(value)
 
-    # Remove any script tags that might have been escaped
+    # 移除任何转义的script标签
     value = re.sub(r"&lt;script.*?&gt;.*?&lt;/script&gt;", "", value, flags=re.DOTALL)
 
-    # Remove null bytes
+    # 移除空字节
     value = value.replace("\0", "")
 
     return value
 
 
 def sanitize_email(email: str) -> str:
-    """Sanitize an email address.
+    """清洗邮箱地址。
 
     Args:
-        email: The email address to sanitize
+        email: 要清洗的邮箱地址
 
     Returns:
-        str: The sanitized email address
+        str: 清洗后的邮箱地址
     """
-    # Basic sanitization
+    # 基本清洗
     email = sanitize_string(email)
 
-    # Ensure email format (simple check)
+    # 确保邮箱格式（简单检查）
     if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email):
         raise ValueError("Invalid email format")
 
@@ -56,13 +50,13 @@ def sanitize_email(email: str) -> str:
 
 
 def sanitize_dict(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively sanitize all string values in a dictionary.
+    """递归清洗字典中的所有字符串值。
 
     Args:
-        data: The dictionary to sanitize
+        data: 要清洗的字典
 
     Returns:
-        Dict[str, Any]: The sanitized dictionary
+        Dict[str, Any]: 清洗后的字典
     """
     sanitized = {}
     for key, value in data.items():
@@ -78,13 +72,13 @@ def sanitize_dict(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def sanitize_list(data: List[Any]) -> List[Any]:
-    """Recursively sanitize all string values in a list.
+    """递归清洗列表中的所有字符串值。
 
     Args:
-        data: The list to sanitize
+        data: 要清洗的列表
 
     Returns:
-        List[Any]: The sanitized list
+        List[Any]: 清洗后的列表
     """
     sanitized = []
     for item in data:
@@ -100,16 +94,16 @@ def sanitize_list(data: List[Any]) -> List[Any]:
 
 
 def validate_password_strength(password: str) -> bool:
-    """Validate password strength.
+    """验证密码强度。必须包含大小写字母、数字、特殊字符，长度至少8位。
 
     Args:
-        password: The password to validate
+        password: 要验证的密码
 
     Returns:
-        bool: Whether the password is strong enough
+        bool: 密码是否足够强
 
     Raises:
-        ValueError: If the password is not strong enough with reason
+        ValueError: 如果密码不够强，则抛出异常
     """
     if len(password) < 8:
         raise ValueError("Password must be at least 8 characters long")

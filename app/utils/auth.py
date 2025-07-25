@@ -1,4 +1,4 @@
-"""该文件包含应用程序的身份验证工具。"""
+"""token生成与校验工具类。"""
 
 import re
 from datetime import UTC, datetime, timedelta
@@ -15,7 +15,7 @@ def create_access_token(thread_id: str, expires_delta: Optional[timedelta] = Non
     """创建一个新的token
 
     Args:
-        thread_id: 用户id | 会话id
+        thread_id: 用户id | 会话id，用于标识用户或会话，当前只用于用户级user_id
         expires_delta: 过期时间差（可选）
 
     Returns:
@@ -41,37 +41,37 @@ def create_access_token(thread_id: str, expires_delta: Optional[timedelta] = Non
 
 
 def verify_token(token: str) -> Optional[str]:
-    """验证JWT令牌并返回会话ID。
+    """验证JWT token 并返回对应ID
 
     Args:
         token: 要验证的JWT令牌
 
     Returns:
-        Optional[str]: 如果令牌有效，则返回会话ID，否则返回None
+        Optional[str]: 如果token有效，则返回ID，否则返回None
 
     Raises:
-        ValueError: 如果令牌格式无效
+        ValueError: 如果token格式无效
     """
     if not token or not isinstance(token, str):
-        logger.warning("token_invalid_format")
+        logger.warning("token invalid format")
         raise ValueError("Token must be a non-empty string")
 
     # 在解码之前进行基本格式验证
     # JWT令牌由3个base64url编码的段组成，用点分隔
     if not re.match(r"^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$", token):
-        logger.warning("token_suspicious_format")
+        logger.warning("token suspicious format")
         raise ValueError("Token format is invalid - expected JWT format")
 
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        thread_id: str = payload.get("sub")
+        thread_id: str | None = payload.get("sub")
         if thread_id is None:
-            logger.warning("token_missing_thread_id")
+            logger.warning("token missing thread id")
             return None
 
-        logger.info("token_verified", thread_id=thread_id)
+        logger.info("token verified", thread_id=thread_id)
         return thread_id
 
     except JWTError as e:
-        logger.error("token_verification_failed", error=str(e))
+        logger.error("token verification failed", error=str(e))
         return None

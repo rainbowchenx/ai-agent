@@ -1,4 +1,6 @@
-"""该文件包含数据库服务。"""
+"""关系型数据库服务类，包括初始化数据库、处理用户、会话和消息等CRUD操作封装。
+基于SQLModel进行ORM操作并维护连接池。
+"""
 
 from typing import List, Optional
 from fastapi import HTTPException
@@ -13,10 +15,8 @@ from app.models.user import User
 
 
 class DatabaseService:
-    """数据库服务类。
-
-    这个类处理所有数据库操作，包括用户、会话和消息。
-    它使用SQLModel进行ORM操作并维护连接池。
+    """数据库服务类，处理所有数据库操作。
+    
     """
 
     def __init__(self):
@@ -41,13 +41,13 @@ class DatabaseService:
             SQLModel.metadata.create_all(self.engine)
 
             logger.info(
-                "database_initialized",
+                "database initialized",
                 environment=settings.ENVIRONMENT.value,
                 pool_size=pool_size,
                 max_overflow=max_overflow,
             )
         except SQLAlchemyError as e:
-            logger.error("database_initialization_error", error=str(e), environment=settings.ENVIRONMENT.value)
+            logger.error("database initialization error", error=str(e), environment=settings.ENVIRONMENT.value)
             # 非生产环境下才抛出错误
             if settings.ENVIRONMENT != Environment.PRODUCTION:
                 raise
@@ -67,7 +67,7 @@ class DatabaseService:
             session.add(user)
             session.commit()
             session.refresh(user)
-            logger.info("user_created", email=email)
+            logger.info("user created successfully", email=email)
             return user
 
     async def get_user(self, user_id: int) -> Optional[User]:
