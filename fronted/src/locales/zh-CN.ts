@@ -98,4 +98,16 @@ export default {
     onlineImportWarning: '注意：请检查 JSON 文件来源！',
     downloadError: '请检查网络状态与 JSON 文件有效性',
   },
+  login: {
+    login:'登录',
+    register:'注册',
+    email:'邮箱',
+    password:'密码',
+    inputEmail:'请输入邮箱',
+    inputPassword:'请输入密码',
+    alreadyHaveAccount:'已有账号？点击登录',
+    notRegisterYet:'还没有账号？点击注册',
+    emailInvalid:'邮箱格式不正确',
+  }
+
 }

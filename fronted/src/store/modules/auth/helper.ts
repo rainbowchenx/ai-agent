@@ -2,14 +2,26 @@ import { ss } from '@/utils/storage'
 
 const LOCAL_NAME = 'SECRET_TOKEN'
 
-export function getToken() {
+// 登录返回用户信息
+export interface AuthInfo {
+  id: number,
+  email: string,
+  token: Token
+}
+export interface Token {
+  accessToken: string,
+  tokenType: string,
+  expireAt: number,
+}
+
+export function getAuthInfo(){
   return ss.get(LOCAL_NAME)
 }
 
-export function setToken(token: string) {
-  return ss.set(LOCAL_NAME, token)
+export function setAuthInfo(authInfo: AuthInfo){
+  return ss.set(LOCAL_NAME, authInfo)
 }
 
-export function removeToken() {
+export function removeAuthInfo(){
   return ss.remove(LOCAL_NAME)
 }

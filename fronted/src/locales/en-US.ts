@@ -98,4 +98,15 @@ export default {
     onlineImportWarning: 'Note: Please check the JSON file source!',
     downloadError: 'Please check the network status and JSON file validity',
   },
+  login: {
+    login:'Login',
+    register:'Register',
+    email:'Email',
+    password:'Password',
+    inputEmail:'Please enter your email',
+    inputPassword:'Please enter your password',
+    alreadyHaveAccount:'Already have an account? Click to login',
+    notRegisterYet:'No account yet? Click to register',
+    emailInvalid:'Email format is incorrect',
+  }
 }

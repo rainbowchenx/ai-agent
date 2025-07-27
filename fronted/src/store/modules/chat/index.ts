@@ -1,12 +1,24 @@
+/**
+ * 聊天状态管理模块
+ * 管理聊天会话、消息历史、当前会话等状态
+ */
+
 import { defineStore } from 'pinia'
 import { defaultState, getLocalState, setLocalState } from './helper'
 import { router } from '@/router'
 import { t } from '@/locales'
 
+/**
+ * 聊天状态 Store
+ * 管理聊天相关的所有状态和操作
+ */
 export const useChatStore = defineStore('chat-store', {
   state: (): Chat.ChatState => getLocalState(),
 
   getters: {
+    /**
+     * 获取当前活跃会话的历史记录
+     */
     getChatHistoryByCurrentActive(state: Chat.ChatState) {
       const index = state.history.findIndex(item => item.uuid === state.active)
       if (index !== -1)
@@ -14,6 +26,10 @@ export const useChatStore = defineStore('chat-store', {
       return null
     },
 
+    /**
+     * 根据UUID获取聊天记录
+     * @param uuid 会话UUID
+     */
     getChatByUuid(state: Chat.ChatState) {
       return (uuid?: number) => {
         if (uuid)
@@ -24,11 +40,20 @@ export const useChatStore = defineStore('chat-store', {
   },
 
   actions: {
+    /**
+     * 设置是否使用上下文
+     * @param context 是否使用上下文
+     */
     setUsingContext(context: boolean) {
       this.usingContext = context
       this.recordState()
     },
 
+    /**
+     * 添加聊天历史
+     * @param history 历史记录
+     * @param chatData 聊天数据
+     */
     addHistory(history: Chat.History, chatData: Chat.Chat[] = []) {
       this.history.unshift(history)
       this.chat.unshift({ uuid: history.uuid, data: chatData })
@@ -36,6 +61,11 @@ export const useChatStore = defineStore('chat-store', {
       this.reloadRoute(history.uuid)
     },
 
+    /**
+     * 更新聊天历史
+     * @param uuid 会话UUID
+     * @param edit 编辑内容
+     */
     updateHistory(uuid: number, edit: Partial<Chat.History>) {
       const index = this.history.findIndex(item => item.uuid === uuid)
       if (index !== -1) {
@@ -44,6 +74,10 @@ export const useChatStore = defineStore('chat-store', {
       }
     },
 
+    /**
+     * 删除聊天历史
+     * @param index 历史记录索引
+     */
     async deleteHistory(index: number) {
       this.history.splice(index, 1)
       this.chat.splice(index, 1)
@@ -76,11 +110,20 @@ export const useChatStore = defineStore('chat-store', {
       }
     },
 
+    /**
+     * 设置活跃会话
+     * @param uuid 会话UUID
+     */
     async setActive(uuid: number) {
       this.active = uuid
       return await this.reloadRoute(uuid)
     },
 
+    /**
+     * 根据UUID和索引获取聊天记录
+     * @param uuid 会话UUID
+     * @param index 消息索引
+     */
     getChatByUuidAndIndex(uuid: number, index: number) {
       if (!uuid || uuid === 0) {
         if (this.chat.length)
@@ -93,6 +136,11 @@ export const useChatStore = defineStore('chat-store', {
       return null
     },
 
+    /**
+     * 根据UUID添加聊天记录
+     * @param uuid 会话UUID
+     * @param chat 聊天记录
+     */
     addChatByUuid(uuid: number, chat: Chat.Chat) {
       if (!uuid || uuid === 0) {
         if (this.history.length === 0) {
@@ -119,6 +167,12 @@ export const useChatStore = defineStore('chat-store', {
       }
     },
 
+    /**
+     * 更新聊天记录
+     * @param uuid 会话UUID
+     * @param index 消息索引
+     * @param chat 聊天记录
+     */
     updateChatByUuid(uuid: number, index: number, chat: Chat.Chat) {
       if (!uuid || uuid === 0) {
         if (this.chat.length) {
@@ -135,6 +189,12 @@ export const useChatStore = defineStore('chat-store', {
       }
     },
 
+    /**
+     * 部分更新聊天记录
+     * @param uuid 会话UUID
+     * @param index 消息索引
+     * @param chat 更新内容
+     */
     updateChatSomeByUuid(uuid: number, index: number, chat: Partial<Chat.Chat>) {
       if (!uuid || uuid === 0) {
         if (this.chat.length) {
@@ -151,6 +211,11 @@ export const useChatStore = defineStore('chat-store', {
       }
     },
 
+    /**
+     * 删除聊天记录
+     * @param uuid 会话UUID
+     * @param index 消息索引
+     */
     deleteChatByUuid(uuid: number, index: number) {
       if (!uuid || uuid === 0) {
         if (this.chat.length) {
@@ -167,6 +232,10 @@ export const useChatStore = defineStore('chat-store', {
       }
     },
 
+    /**
+     * 清空聊天记录
+     * @param uuid 会话UUID
+     */
     clearChatByUuid(uuid: number) {
       if (!uuid || uuid === 0) {
         if (this.chat.length) {
@@ -183,16 +252,26 @@ export const useChatStore = defineStore('chat-store', {
       }
     },
 
+    /**
+     * 清空所有历史记录
+     */
     clearHistory() {
       this.$state = { ...defaultState() }
       this.recordState()
     },
 
+    /**
+     * 重新加载路由
+     * @param uuid 会话UUID (可选)
+     */
     async reloadRoute(uuid?: number) {
       this.recordState()
       await router.push({ name: 'Chat', params: { uuid } })
     },
 
+    /**
+     * 记录当前状态
+     */
     recordState() {
       setLocalState(this.$state)
     },

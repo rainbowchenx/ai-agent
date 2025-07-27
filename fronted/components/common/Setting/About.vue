@@ -1,7 +1,7 @@
 <script setup lang='ts'>
 import { computed, onMounted, ref } from 'vue'
 import { NSpin } from 'naive-ui'
-import pkg from '../../../../package.json'
+import pkg from '../../../../package.json' assert { type: 'json' }
 import { fetchChatConfig } from '@/api'
 import { useAuthStore } from '@/store'
 
