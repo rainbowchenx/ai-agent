@@ -1,4 +1,8 @@
 <script lang="ts" setup>
+/**
+ * 通用设置组件
+ * 提供用户信息、主题、语言、数据导入导出等通用设置功能
+ */
 import { computed, ref } from 'vue'
 import { NButton, NInput, NPopconfirm, NSelect, useMessage } from 'naive-ui'
 import type { Language, Theme } from '@/store/modules/app/helper'
@@ -16,16 +20,14 @@ const { isMobile } = useBasicLayout()
 
 const ms = useMessage()
 
+// 当前主题 、用户信息、用户头像、用户姓名、用户描述、语言设置
 const theme = computed(() => appStore.theme)
-
 const userInfo = computed(() => userStore.userInfo)
-
 const avatar = ref(userInfo.value.avatar ?? '')
-
 const name = ref(userInfo.value.name ?? '')
-
 const description = ref(userInfo.value.description ?? '')
 
+// 语言设置 支持双向绑定 TODO 原理分析
 const language = computed({
   get() {
     return appStore.language
@@ -35,6 +37,9 @@ const language = computed({
   },
 })
 
+/**
+ * 主题选项配置
+ */
 const themeOptions: { label: string; key: Theme; icon: string }[] = [
   {
     label: 'Auto',
@@ -53,22 +58,37 @@ const themeOptions: { label: string; key: Theme; icon: string }[] = [
   },
 ]
 
+/**
+ * 语言选项配置
+ */
 const languageOptions: { label: string; key: Language; value: Language }[] = [
   { label: 'English', key: 'en-US', value: 'en-US' },
   { label: '简体中文', key: 'zh-CN', value: 'zh-CN' },
 ]
 
+/**
+ * 更新用户信息
+ * @param options 要更新的用户信息
+ */
 function updateUserInfo(options: Partial<UserInfo>) {
   userStore.updateUserInfo(options)
   ms.success(t('common.success'))
 }
 
+/**
+ * 重置用户信息
+ * 重置为默认值并刷新页面
+ */
 function handleReset() {
   userStore.resetUserInfo()
   ms.success(t('common.success'))
   window.location.reload()
 }
 
+/**
+ * 导出聊天数据
+ * 将本地存储的聊天数据导出为JSON文件
+ */
 function exportData(): void {
   const date = getCurrentDate()
   const data: string = localStorage.getItem('chatStorage') || '{}'
@@ -83,6 +103,10 @@ function exportData(): void {
   document.body.removeChild(link)
 }
 
+/**
+ * 导入聊天数据
+ * @param event 文件选择事件
+ */
 function importData(event: Event): void {
   const target = event.target as HTMLInputElement
   if (!target || !target.files)
@@ -100,8 +124,8 @@ function importData(event: Event): void {
       ms.success(t('common.success'))
       location.reload()
     }
-    catch (error) {
-      ms.error(t('common.invalidFileFormat'))
+    catch {
+      ms.error(t('common.error'))
     }
   }
   reader.readAsText(file)
@@ -121,7 +145,9 @@ function handleImportButtonClick(): void {
 
 <template>
   <div class="p-4 space-y-5 min-h-[200px]">
+    <!-- 用户信息设置 -->
     <div class="space-y-6">
+      <!-- 头像设置 -->
       <div class="flex items-center space-x-4">
         <span class="flex-shrink-0 w-[100px]">{{ $t('setting.avatarLink') }}</span>
         <div class="flex-1">
@@ -131,6 +157,7 @@ function handleImportButtonClick(): void {
           {{ $t('common.save') }}
         </NButton>
       </div>
+      <!-- 姓名设置 -->
       <div class="flex items-center space-x-4">
         <span class="flex-shrink-0 w-[100px]">{{ $t('setting.name') }}</span>
         <div class="w-[200px]">
@@ -140,6 +167,7 @@ function handleImportButtonClick(): void {
           {{ $t('common.save') }}
         </NButton>
       </div>
+      <!-- 描述设置 -->
       <div class="flex items-center space-x-4">
         <span class="flex-shrink-0 w-[100px]">{{ $t('setting.description') }}</span>
         <div class="flex-1">
@@ -184,6 +212,7 @@ function handleImportButtonClick(): void {
           </NPopconfirm>
         </div>
       </div>
+      <!-- 语言设置 -->
       <div class="flex items-center space-x-4">
         <span class="flex-shrink-0 w-[100px]">{{ $t('setting.theme') }}</span>
         <div class="flex flex-wrap items-center gap-4">
@@ -200,6 +229,7 @@ function handleImportButtonClick(): void {
           </template>
         </div>
       </div>
+      <!-- 数据管理 -->
       <div class="flex items-center space-x-4">
         <span class="flex-shrink-0 w-[100px]">{{ $t('setting.language') }}</span>
         <div class="flex flex-wrap items-center gap-4">
@@ -211,6 +241,7 @@ function handleImportButtonClick(): void {
           />
         </div>
       </div>
+      <!-- 重置按钮 -->
       <div class="flex items-center space-x-4">
         <span class="flex-shrink-0 w-[100px]">{{ $t('setting.resetUserInfo') }}</span>
         <NButton size="small" @click="handleReset">

@@ -8,17 +8,12 @@ import type { PopoverPlacement } from 'naive-ui'
 import { NTooltip } from 'naive-ui'
 import Button from './Button.vue'
 
-/**
- * 组件属性接口
- */
+
 interface Props {
   tooltip?: string        // 工具提示文本
   placement?: PopoverPlacement  // 提示框位置
 }
 
-/**
- * 组件事件接口
- */
 interface Emit {
   (e: 'click'): void      // 点击事件
 }

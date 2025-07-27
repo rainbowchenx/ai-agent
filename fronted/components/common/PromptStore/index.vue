@@ -6,8 +6,8 @@
 import type { DataTableColumns } from 'naive-ui'
 import { computed, h, ref, watch } from 'vue'
 import { NButton, NCard, NDataTable, NDivider, NInput, NList, NListItem, NModal, NPopconfirm, NSpace, NTabPane, NTabs, NThing, useMessage } from 'naive-ui'
-import PromptRecommend from '../../../assets/recommend.json' assert { type: 'json' }
-import { SvgIcon } from '..'
+import PromptRecommend from '@/assets/recommend.json' 
+import { SvgIcon } from '@/components/common'
 import { usePromptStore } from '@/store'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { t } from '@/locales'
@@ -22,16 +22,12 @@ interface DataProps {
   value: string         // 原始描述
 }
 
-/**
- * 组件属性接口
- */
+
 interface Props {
   visible: boolean       // 是否显示提示词商店
 }
 
-/**
- * 组件事件接口
- */
+
 interface Emit {
   (e: 'update:visible', visible: boolean): void    // 更新显示状态
 }
