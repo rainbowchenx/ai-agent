@@ -95,6 +95,18 @@ export function fetchCreateSession<T>() {
   })
 }
 /**
+ * 更新会话名称
+ * @param session_id 会话ID
+ * @param name 会话名称
+ * @returns 返回会话信息的Promise
+ */
+export function fetchUpdateSession<T>(session_id: string, name: string) {
+  return post<T>({
+    url: '/auth/session/{session_id}/name',
+    data: { session_id, name },
+  })
+}
+/**
  * 验证用户令牌
  * @param token 用户访问令牌
  * @returns 返回验证结果的Promise
