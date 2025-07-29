@@ -46,16 +46,16 @@ function http<T = any>(
     const authStore = useAuthStore()
 
     // 成功状态或字符串响应
-    if (res.data.status === 'Success' || typeof res.data === 'string')
-      return res.data
+    // if (res.data)
+    return res
 
     // 未授权状态，清除认证信息
-    if (res.data.status === 'Unauthorized') {
-      authStore.removeAuthInfo()
-      window.location.reload()
-    }
+    // if (res.data.status === 'Unauthorized') {
+    //   authStore.removeAuthInfo()
+    //   window.location.reload()
+    // }
 
-    return Promise.reject(res.data)
+    // return Promise.reject(res.data)
   }
 
   /**
@@ -64,6 +64,7 @@ function http<T = any>(
    * @throws Error
    */
   const failHandler = (error: Response<Error>) => {
+
     afterRequest?.()
     throw new Error(error?.message || '请求失败')
   }
@@ -90,6 +91,9 @@ function http<T = any>(
       throw new Error(`不支持的HTTP方法: ${method}`)
   }
 }
+
+
+
 
 /**
  * GET请求

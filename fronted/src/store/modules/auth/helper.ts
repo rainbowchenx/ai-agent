@@ -9,9 +9,9 @@ export interface AuthInfo {
   token: Token
 }
 export interface Token {
-  accessToken: string,
-  tokenType: string,
-  expireAt: number,
+  access_token: string,
+  token_type: string,
+  expires_at: number,
 }
 
 export function getAuthInfo(){

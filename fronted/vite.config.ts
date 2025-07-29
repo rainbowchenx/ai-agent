@@ -37,9 +37,10 @@ export default defineConfig((env) => {
       open: false,
       proxy: {
         '/api': {
-          target: viteEnv.VITE_APP_API_BASE_URL,
+          target: viteEnv.VITE_APP_API_BASE_URL || 'http://localhost:8000',
           changeOrigin: true, // 允许跨域
-          rewrite: path => path.replace('/api/', '/'),
+          // 移除rewrite规则，保持原始路径
+          // rewrite: path => path.replace('/api/', '/'),
         },
       },
     },

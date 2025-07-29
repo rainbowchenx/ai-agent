@@ -115,7 +115,7 @@ async def get_current_session(credentials: HTTPAuthorizationCredentials = Depend
 
 
 @router.post("/register", response_model=UserResponse)
-@limiter.limit(settings.RATE_LIMIT_ENDPOINTS["register"][0])
+# @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["register"][0])
 async def register_user(request: Request, user_data: UserCreate):
     """注册新用户
 
@@ -150,7 +150,7 @@ async def register_user(request: Request, user_data: UserCreate):
         raise HTTPException(status_code=422, detail=str(ve))
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=UserResponse)
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["login"][0])
 async def login(
     request: Request, username: str = Form(...), password: str = Form(...), grant_type: str = Form(default="password")
@@ -164,7 +164,7 @@ async def login(
         grant_type: 必须为 "password"
 
     Returns:
-        TokenResponse: 访问令牌信息
+        UserResponse: 登录的全部信息
 
     Raises:
         HTTPException: 如果凭据无效
@@ -192,7 +192,7 @@ async def login(
             )
 
         token = create_access_token(str(user.id))
-        return TokenResponse(access_token=token.access_token, token_type="bearer", expires_at=token.expires_at)
+        return UserResponse(id=user.id, email=user.email, token=token)
     except ValueError as ve:
         logger.error("login_validation_failed", error=str(ve), exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))
@@ -233,14 +233,13 @@ async def create_session(user: User = Depends(get_current_user)):
 
 @router.patch("/session/{session_id}/name", response_model=SessionResponse)
 async def update_session_name(
-    session_id: str, name: str = Form(...), current_session: Session = Depends(get_current_session)
+    session_id: str, name: str = Form(...)
 ):
     """更新会话名称
 
     Args:
         session_id: 要更新的会话ID
         name: 会话的新名称
-        current_session: 当前会话
 
     Returns:
         SessionResponse: 更新的会话信息
@@ -249,11 +248,11 @@ async def update_session_name(
         # 数据清洗
         sanitized_session_id = sanitize_string(session_id)
         sanitized_name = sanitize_string(name)
-        sanitized_current_session = sanitize_string(current_session.id)
+        # sanitized_current_session = sanitize_string(current_session.id)
 
         # 验证会话ID是否与当前会话匹配
-        if sanitized_session_id != sanitized_current_session:
-            raise HTTPException(status_code=403, detail="Cannot modify other sessions")
+        # if sanitized_session_id != sanitized_current_session:
+        #     raise HTTPException(status_code=403, detail="Cannot modify other sessions")
 
         # 更新会话名称
         session = await db_service.update_session_name(sanitized_session_id, sanitized_name)

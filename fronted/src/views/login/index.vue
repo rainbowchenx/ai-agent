@@ -62,10 +62,11 @@ const handleSubmit = async () => {
   // 登录情况
   if (isLogin.value) {
     const res:any = await fetchLoginAccount(form.value.email, form.value.password);
-    if (res.code === '200') {
+    if (res.status === 200) {
       // 登录成功
       message.success('登录成功');
-
+      // 保存登录信息到store
+      authStore.setAuthInfo(res.data);
       router.push('/chat');
     }else{
       // 登录失败
@@ -74,9 +75,9 @@ const handleSubmit = async () => {
   }else{
     // 注册情况
     const res:any = await fetchRegisterAccount(form.value.email, form.value.password);
-    if (res.code === '201') {
+    if (res.status === 200) {
       // 注册成功
-      isLogin.value = true;
+      isLogin.value = false;
       toggleMode();
       message.success('注册成功');
     }else{

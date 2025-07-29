@@ -6,6 +6,7 @@
 import type { AxiosProgressEvent, GenericAbortSignal } from 'axios'
 import { post } from '@/utils/request'
 import { useAuthStore, useSettingStore } from '@/store'
+import type { RegisterResponse, LoginResponse } from './auth-types'
 
 /**
  * 发送聊天请求到后端API
@@ -75,7 +76,7 @@ export function fetchChatAPIProcess<T = any>(
 }
 
 /**
- * 创建新的聊天会话
+ * 获取所有的会话
  * @returns 返回会话信息的Promise
  */
 export function fetchSession<T>() {
@@ -84,6 +85,15 @@ export function fetchSession<T>() {
   })
 }
 
+/**
+ * 创建新的聊天会话
+ * @returns 返回会话信息的Promise
+ */
+export function fetchCreateSession<T>() {
+  return post<T>({
+    url: '/auth/session',
+  })
+}
 /**
  * 验证用户令牌
  * @param token 用户访问令牌
@@ -96,16 +106,15 @@ export function fetchVerify<T>(token: string) {
   })
 }
 
-
 /**
  * 注册新用户
  * @param email 用户邮箱
  * @param password 用户密码
  * @returns 返回注册结果的Promise
  */
-export function fetchRegisterAccount<T>(email: string, password: string) {
-  return post<T>({
-    url: '/register',
+export function fetchRegisterAccount(email: string, password: string) {
+  return post<RegisterResponse>({
+    url: '/auth/register',
     data: { email, password },
   })
 }
@@ -118,7 +127,10 @@ export function fetchRegisterAccount<T>(email: string, password: string) {
  */
 export function fetchLoginAccount<T>(email: string, password: string) {
   return post<T>({
-    url: '/login',
-    data: { email, password },
+    url: '/auth/login',
+    headers:{
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    data: { username: email, password, grant_type: 'password' },
   })
 }
