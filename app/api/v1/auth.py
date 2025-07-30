@@ -268,7 +268,7 @@ async def update_session_name(
 
 
 @router.delete("/session/{session_id}")
-async def delete_session(session_id: str, current_session: Session = Depends(get_current_session)):
+async def delete_session(session_id: str):
     """删除当前用户的会话
 
     Args:
@@ -281,16 +281,16 @@ async def delete_session(session_id: str, current_session: Session = Depends(get
     try:
         # 数据清洗
         sanitized_session_id = sanitize_string(session_id)
-        sanitized_current_session = sanitize_string(current_session.id)
+        # sanitized_current_session = sanitize_string(current_session.id)
 
         # 验证会话ID是否与当前会话匹配
-        if sanitized_session_id != sanitized_current_session:
-            raise HTTPException(status_code=403, detail="Cannot delete other sessions")
+        # if sanitized_session_id != sanitized_current_session:
+        #     raise HTTPException(status_code=403, detail="Cannot delete other sessions")
 
             # 删除会话
         await db_service.delete_session(sanitized_session_id)
 
-        logger.info("session_deleted", session_id=session_id, user_id=current_session.user_id)
+        logger.info("session_deleted", session_id=session_id)
     except ValueError as ve:
         logger.error("session_deletion_validation_failed", error=str(ve), session_id=session_id, exc_info=True)
         raise HTTPException(status_code=422, detail=str(ve))

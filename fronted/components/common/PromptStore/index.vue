@@ -47,24 +47,16 @@ const show = computed({
   set: (visible: boolean) => emit('update:visible', visible),
 })
 
-/**
- * 模态框显示状态
- */
+// 模态框显示状态
 const showModal = ref(false)
 
-/**
- * 导入加载状态
- */
+// 导入加载状态
 const importLoading = ref(false)
 
-/**
- * 导出加载状态
- */
+// 导出加载状态
 const exportLoading = ref(false)
 
-/**
- * 搜索关键词
- */
+// 搜索关键词
 const searchValue = ref<string>('')
 
 // 移动端自适应相关

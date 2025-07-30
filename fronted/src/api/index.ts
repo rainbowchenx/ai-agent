@@ -4,7 +4,7 @@
  */
 
 import type { AxiosProgressEvent, GenericAbortSignal } from 'axios'
-import { post } from '@/utils/request'
+import { post, patch, del, get } from '@/utils/request'
 import { useAuthStore, useSettingStore } from '@/store'
 import type { RegisterResponse, LoginResponse } from './auth-types'
 
@@ -80,8 +80,8 @@ export function fetchChatAPIProcess<T = any>(
  * @returns 返回会话信息的Promise
  */
 export function fetchSession<T>() {
-  return post<T>({
-    url: '/session',
+  return get<T>({
+    url: '/auth/sessions',
   })
 }
 
@@ -101,11 +101,25 @@ export function fetchCreateSession<T>() {
  * @returns 返回会话信息的Promise
  */
 export function fetchUpdateSession<T>(session_id: string, name: string) {
-  return post<T>({
-    url: '/auth/session/{session_id}/name',
-    data: { session_id, name },
+  const formData = new FormData()
+  formData.append('name', name)
+  
+  return patch<T>({
+    url: `/auth/session/${session_id}/name`,
+    data: formData,
+    headers:{
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
   })
 }
+
+export function fetchDeleteSession<T>(session_id: string) {
+  return del<T>({
+    url: `/auth/session/${session_id}`,
+  })
+}
+
+
 /**
  * 验证用户令牌
  * @param token 用户访问令牌
@@ -115,6 +129,7 @@ export function fetchVerify<T>(token: string) {
   return post<T>({
     url: '/verify',
     data: { token },
+    
   })
 }
 

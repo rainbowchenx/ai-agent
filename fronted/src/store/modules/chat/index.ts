@@ -7,13 +7,14 @@ import { defineStore } from 'pinia'
 import { defaultState, getLocalState, setLocalState } from './helper'
 import { router } from '@/router'
 import { t } from '@/locales'
+import { fetchDeleteSession, fetchUpdateSession, fetchSession } from '@/api'
 
 /**
  * 聊天状态 Store
  * 管理聊天相关的所有状态和操作
  */
 export const useChatStore = defineStore('chat-store', {
-  state: (): Chat.ChatState => getLocalState(),
+  state: (): Chat.ChatState => getLocalState(), 
 
   getters: {
     /**
@@ -66,11 +67,20 @@ export const useChatStore = defineStore('chat-store', {
      * @param uuid 会话UUID
      * @param edit 编辑内容
      */
-    updateHistory(uuid: number, edit: Partial<Chat.History>) {
+    async updateHistory(uuid: number, edit: Partial<Chat.History>) {
       const index = this.history.findIndex(item => item.uuid === uuid)
       if (index !== -1) {
         this.history[index] = { ...this.history[index], ...edit }
         this.recordState()
+        // 只有在保存标题（退出编辑模式）时才调用后端API
+        if (edit.isEdit === false) {
+          try {
+            const res = await fetchUpdateSession(uuid.toString(), this.history[index].title)
+            console.log("更新会话名称", res)
+          } catch (error) {
+            console.error('更新会话名称失败:', error)
+          }
+        }
       }
     },
 
@@ -79,34 +89,40 @@ export const useChatStore = defineStore('chat-store', {
      * @param index 历史记录索引
      */
     async deleteHistory(index: number) {
-      this.history.splice(index, 1)
-      this.chat.splice(index, 1)
+      try{
+        const uuid = this.history[index].uuid
+        await fetchDeleteSession(uuid.toString())
+        this.history.splice(index, 1)
+        this.chat.splice(index, 1)
 
-      if (this.history.length === 0) {
-        this.active = null
-        this.reloadRoute()
-        return
-      }
+        if (this.history.length === 0) {
+          this.active = null
+          this.reloadRoute()
+          return
+        }
 
-      if (index > 0 && index <= this.history.length) {
-        const uuid = this.history[index - 1].uuid
-        this.active = uuid
-        this.reloadRoute(uuid)
-        return
-      }
+        if (index > 0 && index <= this.history.length) {
+          const uuid = this.history[index - 1].uuid
+          this.active = uuid
+          this.reloadRoute(uuid)
+          return
+        }
 
-      if (index === 0) {
-        if (this.history.length > 0) {
-          const uuid = this.history[0].uuid
+        if (index === 0) {
+          if (this.history.length > 0) {
+            const uuid = this.history[0].uuid
+            this.active = uuid
+            this.reloadRoute(uuid)
+          }
+        }
+
+        if (index > this.history.length) {
+          const uuid = this.history[this.history.length - 1].uuid
           this.active = uuid
           this.reloadRoute(uuid)
         }
-      }
-
-      if (index > this.history.length) {
-        const uuid = this.history[this.history.length - 1].uuid
-        this.active = uuid
-        this.reloadRoute(uuid)
+      } catch (error) {
+        console.error('删除会话失败:', error)
       }
     },
 
@@ -258,6 +274,20 @@ export const useChatStore = defineStore('chat-store', {
     clearHistory() {
       this.$state = { ...defaultState() }
       this.recordState()
+    },
+
+    async getUserSessions() {
+      const res:any = await fetchSession()
+      console.log("获取会话", res)
+      if (res.status === 200) {
+        this.history = res.data.map((item: any) => ({
+          uuid: item.session_id,
+          title: item.name || t('chat.newChatTitle'),
+          isEdit: false
+        }))
+      }
+      this.recordState()
+      
     },
 
     /**

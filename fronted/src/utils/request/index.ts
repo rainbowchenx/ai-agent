@@ -195,4 +195,4 @@ export function patch<T = any>(
 }
 
 // 默认导出POST方法
-export default post
+// export default post

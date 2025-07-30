@@ -5,16 +5,17 @@
 
 import json
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from fastapi.responses import StreamingResponse
-
-from app.api.v1.auth import get_current_session
+from app.models.user import User
+from app.api.v1.auth import get_current_session, get_current_user
 from app.core.config import settings
 from app.core.langgraph.graph import LangGraphAgent
 from app.core.limiter import limiter
 from app.core.logging import logger
 from app.models.session import Session
 from app.schemas.chat import ChatRequest, ChatResponse, Message, StreamResponse
+
 
 router = APIRouter()
 agent = LangGraphAgent()
@@ -26,7 +27,9 @@ agent = LangGraphAgent()
 async def chat(
     request: Request,
     chat_request: ChatRequest,
-    session: Session = Depends(get_current_session),
+    # session: Session = Depends(get_current_session),
+    session_id: str = Form(...),
+    user: User = Depends(get_current_user),
 ):
     """处理聊天请求使用LangGraph。
 
@@ -44,21 +47,22 @@ async def chat(
     try:
         logger.info(
             "chat_request_received",
-            session_id=session.id,
+            session_id=session_id,
             message_count=len(chat_request.messages),
         )
 
        
 
-        result = await agent.get_response(
-            chat_request.messages, session.id, user_id=session.user_id
-        )
+        # result = await agent.get_response(
+        #     chat_request.messages, session_id, user_id=user.id
+        # )
+        result = "test"
 
-        logger.info("chat_request_processed", session_id=session.id)
+        logger.info("chat_request_processed", session_id=session_id)
 
         return ChatResponse(messages=result)
     except Exception as e:
-        logger.error("chat_request_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.error("chat_request_failed", session_id=session_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

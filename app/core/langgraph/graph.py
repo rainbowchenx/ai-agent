@@ -55,6 +55,7 @@ class LangGraphAgent:
         # 使用环境特定的LLM模型
         self.llm = ChatOpenAI(
             model=settings.LLM_MODEL,
+            base_url=settings.LLM_BASE_URL,
             temperature=settings.DEFAULT_LLM_TEMPERATURE,
             api_key=settings.LLM_API_KEY,
             max_tokens=settings.MAX_TOKENS,

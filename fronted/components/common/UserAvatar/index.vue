@@ -41,7 +41,7 @@ const userInfo = computed(() => userStore.userInfo)
     <div class="flex-1 min-w-0 ml-2">
       <!-- 用户姓名 -->
       <h2 class="overflow-hidden font-bold text-md text-ellipsis whitespace-nowrap">
-        {{ userInfo.name ?? 'ChenZhaoYu' }}
+        {{ userInfo.name ?? 'rain' }}
       </h2>
       <!-- 用户描述 -->
       <p class="overflow-hidden text-xs text-gray-500 text-ellipsis whitespace-nowrap">

@@ -3,7 +3,7 @@
  * 显示用户的聊天历史记录，支持选择、编辑、删除操作
  */
 <script setup lang='ts'>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { NInput, NPopconfirm, NScrollbar } from 'naive-ui'
 import { SvgIcon } from '@/components/common'
 import { useAppStore, useChatStore } from '@/store'
@@ -49,13 +49,29 @@ function handleEdit({ uuid }: Chat.History, isEdit: boolean, event?: MouseEvent)
 }
 
 /**
+ * 处理保存编辑内容
+ * @param history 聊天历史对象
+ * @param event 鼠标事件对象
+ */
+async function handleSave({ uuid }: Chat.History, event?: MouseEvent) {
+  event?.stopPropagation()
+  try {
+    // 保存编辑内容，这会触发后端API调用
+    await chatStore.updateHistory(uuid, { isEdit: false })
+    console.log('标题保存成功')
+  } catch (error) {
+    console.error('保存标题失败:', error)
+  }
+}
+
+/**
  * 处理删除聊天历史
  * @param index 要删除的历史记录索引
  * @param event 鼠标或触摸事件对象
  */
-function handleDelete(index: number, event?: MouseEvent | TouchEvent) {
+async function handleDelete(index: number, event?: MouseEvent | TouchEvent) {
   event?.stopPropagation()
-  chatStore.deleteHistory(index)
+  await chatStore.deleteHistory(index)
   if (isMobile.value)
     appStore.setSiderCollapsed(true)
 }
@@ -64,16 +80,22 @@ function handleDelete(index: number, event?: MouseEvent | TouchEvent) {
 const handleDeleteDebounce = debounce(handleDelete, 600)
 
 /**
- * 处理编辑状态下的回车键事件 修改标题
+ * 处理编辑状态下的回车键事件
  * 按回车键保存编辑内容
  * @param history 聊天历史对象
- * @param isEdit 是否处于编辑状态
  * @param event 键盘事件对象
  */
-function handleEnter({ uuid }: Chat.History, isEdit: boolean, event: KeyboardEvent) {
+async function handleEnter({ uuid }: Chat.History, event: KeyboardEvent) {
   event?.stopPropagation()
-  if (event.key === 'Enter')
-    chatStore.updateHistory(uuid, { isEdit })
+  if (event.key === 'Enter') {
+    try {
+      // 保存编辑内容，这会触发后端API调用
+      await chatStore.updateHistory(uuid, { isEdit: false })
+      console.log('标题保存成功')
+    } catch (error) {
+      console.error('保存标题失败:', error)
+    }
+  }
 }
 
 /**
@@ -84,6 +106,10 @@ function handleEnter({ uuid }: Chat.History, isEdit: boolean, event: KeyboardEve
 function isActive(uuid: number) {
   return chatStore.active === uuid
 }
+
+onMounted(async () => {
+  await chatStore.getUserSessions()
+})
 </script>
 
 <template>
@@ -118,7 +144,7 @@ function isActive(uuid: number) {
               <NInput
                 v-if="item.isEdit"
                 v-model:value="item.title" size="tiny"
-                @keypress="handleEnter(item, false, $event)"
+                @keypress="handleEnter(item, $event)"
               />
               <!-- 非编辑状态：显示标题文本 -->
               <span v-else>{{ item.title }}</span>
@@ -128,7 +154,7 @@ function isActive(uuid: number) {
             <div v-if="isActive(item.uuid)" class="absolute z-10 flex visible right-1">
               <!-- 编辑状态：显示保存按钮 -->
               <template v-if="item.isEdit">
-                <button class="p-1" @click="handleEdit(item, false, $event)">
+                <button class="p-1" @click="handleSave(item, $event)">
                   <SvgIcon icon="ri:save-line" />
                 </button>
               </template>
