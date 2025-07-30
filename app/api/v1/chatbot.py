@@ -4,6 +4,7 @@
 """
 
 import json
+from math import log
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from fastapi.responses import StreamingResponse
@@ -28,7 +29,7 @@ async def chat(
     request: Request,
     chat_request: ChatRequest,
     # session: Session = Depends(get_current_session),
-    session_id: str = Form(...),
+    session_id: str ,
     user: User = Depends(get_current_user),
 ):
     """处理聊天请求使用LangGraph。
@@ -53,10 +54,16 @@ async def chat(
 
        
 
-        # result = await agent.get_response(
-        #     chat_request.messages, session_id, user_id=user.id
-        # )
-        result = "test"
+        result1 = await agent.get_response(
+            chat_request.messages, session_id, user_id=user.id
+        )
+        logger.info("result1", result1=result1)
+        result = [
+            {
+                "role": "assistant",
+                "content": "test"
+            }
+        ]
 
         logger.info("chat_request_processed", session_id=session_id)
 

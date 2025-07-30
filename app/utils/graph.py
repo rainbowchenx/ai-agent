@@ -30,13 +30,9 @@ def prepare_messages(messages: list[Message], llm: BaseChatModel, system_prompt:
     Returns:
         list[Message]: 准备后的消息。
     """
-    trimmed_messages = _trim_messages(
-        dump_messages(messages),
-        strategy="last",
-        token_counter=llm,
-        max_tokens=settings.MAX_TOKENS,
-        start_on="human",
-        include_system=False,
-        allow_partial=False,
-    )
-    return [Message(role="system", content=system_prompt)] + trimmed_messages
+    # 对于cl100k_base tokenizer，直接使用原始消息避免token计数问题
+    # 如果需要限制消息长度，可以使用简单的字符计数或消息数量限制
+    if len(messages) > 10:  # 简单的消息数量限制
+        messages = messages[-10:]  # 只保留最后10条消息
+    
+    return [Message(role="system", content=system_prompt)] + messages
