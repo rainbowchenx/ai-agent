@@ -1,4 +1,4 @@
-"""This file contains the graph schema for the application."""
+"""该文件包含应用程序的图数据模式定义。"""
 
 import re
 import uuid
@@ -13,7 +13,7 @@ from pydantic import (
 
 
 class GraphState(BaseModel):
-    """State definition for the LangGraph Agent/Workflow."""
+    """LangGraph代理/工作流的状态定义。"""
 
     messages: Annotated[list, add_messages] = Field(
         default_factory=list, description="The messages in the conversation"
@@ -23,23 +23,23 @@ class GraphState(BaseModel):
     @field_validator("session_id")
     @classmethod
     def validate_session_id(cls, v: str) -> str:
-        """Validate that the session ID is a valid UUID or follows safe pattern.
+        """验证会话ID是否为有效的UUID或遵循安全模式。
 
         Args:
-            v: The thread ID to validate
+            v: 要验证的会话ID
 
         Returns:
-            str: The validated session ID
+            str: 验证后的会话ID
 
         Raises:
-            ValueError: If the session ID is not valid
+            ValueError: 如果会话ID无效
         """
-        # Try to validate as UUID
+        # 尝试验证为UUID
         try:
             uuid.UUID(v)
             return v
         except ValueError:
-            # If not a UUID, check for safe characters only
+            # 如果不是UUID，检查是否只包含安全字符
             if not re.match(r"^[a-zA-Z0-9_\-]+$", v):
                 raise ValueError("Session ID must contain only alphanumeric characters, underscores, and hyphens")
             return v

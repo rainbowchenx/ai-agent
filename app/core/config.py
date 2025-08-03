@@ -142,11 +142,6 @@ class Settings:
         # CORS Settings
         self.ALLOWED_ORIGINS = parse_list_from_env("ALLOWED_ORIGINS", ["*"])
 
-        # Langfuse Configuration
-        self.LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
-        self.LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
-        self.LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
-
         # LangGraph Configuration
         self.LLM_API_KEY = os.getenv("LLM_API_KEY", "sk-911b6efef10943f8a1967a1a648ae58f")
         self.LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")

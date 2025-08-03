@@ -3,39 +3,22 @@
 from typing import Any, AsyncGenerator, Dict, Literal, Optional
 
 from asgiref.sync import sync_to_async
-from langchain_core.messages import (
-    BaseMessage,
-    ToolMessage,
-    convert_to_openai_messages,
-)
+from langchain_core.messages import BaseMessage, ToolMessage, convert_to_openai_messages
 from langchain_openai import ChatOpenAI
-from langfuse.langchain import CallbackHandler
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.graph import (
-    END,
-    StateGraph,
-)
+from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import StateSnapshot
 from openai import OpenAIError
 from psycopg_pool import AsyncConnectionPool
 
-from app.core.config import (
-    Environment,
-    settings,
-)
+from app.core.config import Environment, settings
 from app.core.langgraph.tools import tools
 from app.core.logging import logger
 
 from app.core.prompts import SYSTEM_PROMPT
-from app.schemas import (
-    GraphState,
-    Message,
-)
-from app.utils import (
-    dump_messages,
-    prepare_messages,
-)
+from app.schemas import GraphState, Message
+from app.utils import dump_messages, prepare_messages
 
 
 class LangGraphAgent:
@@ -264,8 +247,8 @@ class LangGraphAgent:
 
         Args:
             messages (list[Message]): 发送到LLM的消息。
-            session_id (str): Langfuse跟踪的会话ID。
-            user_id (Optional[str]): Langfuse跟踪的用户ID。
+            session_id (str): 对话的会话ID。
+            user_id (Optional[str]): 对话的用户ID。
 
         Returns:
             list[dict]: LLM的响应。
@@ -274,7 +257,7 @@ class LangGraphAgent:
             self._graph = await self.create_graph()
         config = {
             "configurable": {"thread_id": session_id},
-            "callbacks": [CallbackHandler()],
+            "callbacks": [],
             "metadata": {
                 "user_id": user_id,
                 "session_id": session_id,
@@ -306,7 +289,7 @@ class LangGraphAgent:
         """
         config = {
             "configurable": {"thread_id": session_id},
-            "callbacks": [CallbackHandler()],
+            "callbacks": [],
 
                 # environment=settings.ENVIRONMENT.value, debug=False, user_id=user_id, session_id=session_id
         }

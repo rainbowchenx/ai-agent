@@ -165,18 +165,7 @@ async def get_session_messages(
         if session.user_id != user.id:
             raise HTTPException(status_code=403, detail="Access denied to this session")
         
-        # messages = await agent.get_chat_history(session_id)
-        # 测试用模拟数据怒
-        messages = [
-            {
-                "role": "user",
-                "content": "Hello, how are you?"
-            },
-            {
-                "role": "assistant",
-                "content": "I'm good, thank you!"
-            }
-        ]
+        messages = await agent.get_chat_history(session_id)
         return ChatResponse(messages=messages)
     except Exception as e:
         logger.error("get_messages_failed", session_id=session_id, error=str(e), exc_info=True)

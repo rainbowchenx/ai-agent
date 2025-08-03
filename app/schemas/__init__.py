@@ -1,4 +1,7 @@
-"""This file contains the schemas for the application."""
+"""该文件包含应用程序的数据模式定义。
+
+导出所有schemas模块中定义的数据模型，方便在其他地方统一导入。
+"""
 
 from app.schemas.auth import Token
 from app.schemas.chat import (
@@ -9,6 +12,7 @@ from app.schemas.chat import (
 )
 from app.schemas.graph import GraphState
 
+# 导出所有数据模型，供其他模块使用
 __all__ = [
     "Token",
     "ChatRequest",

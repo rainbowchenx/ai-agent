@@ -1,4 +1,7 @@
-"""This file contains the session model for the application."""
+"""该文件包含会话模型。
+
+定义了聊天会话相关的数据模型，用于管理用户的聊天会话。
+"""
 
 from typing import (
     TYPE_CHECKING,
@@ -17,7 +20,9 @@ if TYPE_CHECKING:
 
 
 class Session(BaseModel, table=True):
-    """Session model for storing chat sessions.
+    """会话模型，用于存储聊天会话信息。
+
+    该模型定义了聊天会话的基本信息，包括会话ID、名称等，并与用户和消息建立关联关系。
 
     Attributes:
         id: The primary key

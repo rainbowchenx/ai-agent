@@ -17,6 +17,9 @@ from app.schemas.auth import SessionResponse, TokenResponse, UserCreate, UserRes
 from app.services.database import DatabaseService  # 数据库服务
 from app.utils.auth import create_access_token, verify_token  # token生成与验证
 from app.utils.sanitization import sanitize_email, sanitize_string, validate_password_strength  # 用户数据清洗
+from app.core.langgraph.graph import LangGraphAgent
+
+agent = LangGraphAgent()
 
 router = APIRouter()  # 路由
 security = HTTPBearer()  
@@ -287,8 +290,10 @@ async def delete_session(session_id: str):
         # if sanitized_session_id != sanitized_current_session:
         #     raise HTTPException(status_code=403, detail="Cannot delete other sessions")
 
-            # 删除会话
+        # 删除会话
         await db_service.delete_session(sanitized_session_id)
+        # 删除会话的聊天历史
+        # await agent.clear_chat_history(sanitized_session_id)
 
         logger.info("session_deleted", session_id=session_id)
     except ValueError as ve:
