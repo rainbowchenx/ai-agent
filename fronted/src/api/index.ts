@@ -9,7 +9,7 @@ import { useAuthStore, useSettingStore } from '@/store'
 import type { RegisterResponse, LoginResponse } from './auth-types'
 
 /**
- * 发送聊天请求到后端API
+ * 鉴权、会话管理、聊天的前端请求
  * @param prompt 用户输入的提示词或消息内容
  * @param options 可选的聊天选项
  * @param signal 用于取消请求的AbortSignal
@@ -21,7 +21,7 @@ export function fetchChatAPI<T = any>(
   signal?: GenericAbortSignal,
 ) {
   return post<T>({
-    url: '/chat',
+    url: '/chatbot/chat',
     data: { prompt, options },
     signal,
   })
@@ -113,12 +113,27 @@ export function fetchUpdateSession<T>(session_id: string, name: string) {
   })
 }
 
+/**
+ * 删除会话
+ * @param session_id 会话ID
+ * @returns 返回删除结果的Promise
+ */
 export function fetchDeleteSession<T>(session_id: string) {
   return del<T>({
     url: `/auth/session/${session_id}`,
   })
 }
 
+/**
+ * 获取会话的所有消息
+ * @param session_id 会话ID
+ * @returns 返回会话消息的Promise
+ */
+export function fetchSessionMessages<T>(session_id: string) {
+  return get<T>({
+    url: `/chatbot/messages/${session_id}`,
+  })
+}
 
 /**
  * 验证用户令牌

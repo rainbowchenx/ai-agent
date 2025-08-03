@@ -45,6 +45,8 @@ async function handleSelect({ uuid }: Chat.History) {
  */
 function handleEdit({ uuid }: Chat.History, isEdit: boolean, event?: MouseEvent) {
   event?.stopPropagation()
+
+  console.log("handleEdit", uuid, isEdit)
   chatStore.updateHistory(uuid, { isEdit })
 }
 

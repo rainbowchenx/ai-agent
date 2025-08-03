@@ -16,19 +16,19 @@ from app.core.limiter import limiter
 from app.core.logging import logger
 from app.models.session import Session
 from app.schemas.chat import ChatRequest, ChatResponse, Message, StreamResponse
+from app.services.database import DatabaseService
 
 
 router = APIRouter()
 agent = LangGraphAgent()
-
+db_service = DatabaseService()
 
 
 @router.post("/chat", response_model=ChatResponse)
-@limiter.limit(settings.RATE_LIMIT_ENDPOINTS["chat"][0])
+# @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["chat"][0])
 async def chat(
     request: Request,
     chat_request: ChatRequest,
-    # session: Session = Depends(get_current_session),
     session_id: str ,
     user: User = Depends(get_current_user),
 ):
@@ -37,7 +37,8 @@ async def chat(
     Args:
         request: FastAPI请求对象用于速率限制。
         chat_request: 包含消息的聊天请求。
-        session: 从认证令牌获取的当前会话。
+        session_id: 会话ID。
+        user: 当前用户。
 
     Returns:
         ChatResponse: 处理后的聊天响应。
@@ -52,20 +53,9 @@ async def chat(
             message_count=len(chat_request.messages),
         )
 
-       
+        result = await agent.get_response(chat_request.messages, session_id, user_id=user.id)
 
-        result1 = await agent.get_response(
-            chat_request.messages, session_id, user_id=user.id
-        )
-        logger.info("result1", result1=result1)
-        result = [
-            {
-                "role": "assistant",
-                "content": "test"
-            }
-        ]
-
-        logger.info("chat_request_processed", session_id=session_id)
+        logger.info("chat_request_processed", session_id=session_id, result=result)
 
         return ChatResponse(messages=result)
     except Exception as e:
@@ -78,7 +68,9 @@ async def chat(
 async def chat_stream(
     request: Request,
     chat_request: ChatRequest,
-    session: Session = Depends(get_current_session),
+    # session: Session = Depends(get_current_session),
+    session_id: str ,
+    user: User = Depends(get_current_user),
 ):
     """使用LangGraph处理聊天请求并返回流式响应。
 
@@ -96,7 +88,7 @@ async def chat_stream(
     try:
         logger.info(
             "stream_chat_request_received",
-            session_id=session.id,
+            session_id=session_id,
             message_count=len(chat_request.messages),
         )
 
@@ -112,7 +104,7 @@ async def chat_stream(
             try:
                 full_response = ""
                 async for chunk in agent.get_stream_response(
-                    chat_request.messages, session.id, user_id=session.user_id
+                    chat_request.messages, session_id, user_id=user.id
                  ):
                         full_response += chunk
                         response = StreamResponse(content=chunk, done=False)
@@ -125,7 +117,7 @@ async def chat_stream(
             except Exception as e:
                 logger.error(
                     "stream_chat_request_failed",
-                    session_id=session.id,
+                    session_id=session_id,
                     error=str(e),
                     exc_info=True,
                 )
@@ -137,24 +129,26 @@ async def chat_stream(
     except Exception as e:
         logger.error(
             "stream_chat_request_failed",
-            session_id=session.id,
+            session_id=session_id,
             error=str(e),
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/messages", response_model=ChatResponse)
+@router.get("/messages/{session_id}", response_model=ChatResponse)
 @limiter.limit(settings.RATE_LIMIT_ENDPOINTS["messages"][0])
 async def get_session_messages(
     request: Request,
-    session: Session = Depends(get_current_session),
+    session_id: str,
+    user: User = Depends(get_current_user),
 ):
-    """获取会话的所有消息。
+    """获取指定会话的所有消息。
 
     Args:
         request: FastAPI请求对象用于速率限制。
-        session: 从认证令牌获取的当前会话。
+        session_id: 会话ID
+        user: 从认证令牌获取的当前用户。
 
     Returns:
         ChatResponse: 会话中的所有消息。
@@ -163,10 +157,29 @@ async def get_session_messages(
         HTTPException: 如果获取消息时出错。
     """
     try:
-        messages = await agent.get_chat_history(session.id)
+        # 验证会话是否属于当前用户
+        session = await db_service.get_session(session_id)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        if session.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Access denied to this session")
+        
+        # messages = await agent.get_chat_history(session_id)
+        # 测试用模拟数据怒
+        messages = [
+            {
+                "role": "user",
+                "content": "Hello, how are you?"
+            },
+            {
+                "role": "assistant",
+                "content": "I'm good, thank you!"
+            }
+        ]
         return ChatResponse(messages=messages)
     except Exception as e:
-        logger.error("get_messages_failed", session_id=session.id, error=str(e), exc_info=True)
+        logger.error("get_messages_failed", session_id=session_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

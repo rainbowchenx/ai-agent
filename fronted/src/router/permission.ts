@@ -1,5 +1,6 @@
 import type { Router } from 'vue-router'
 import { useAuthStoreWithout } from '@/store/modules/auth'
+import { useChatStore } from '@/store/modules/chat'
 
 export function setupPageGuard(router: Router) {
   router.beforeEach(async (to, from, next) => {
@@ -23,6 +24,19 @@ export function setupPageGuard(router: Router) {
       }
     }
     else {
+      // 用户已登录，检查是否需要获取会话数据
+      if (to.name === 'Chat' && authStore.authInfo?.token) {
+        const chatStore = useChatStore()
+        // 如果还没有会话数据，则获取
+        if (chatStore.history.length === 0 || (chatStore.history.length === 1 && chatStore.history[0].title === '新对话')) {
+          try {
+            await chatStore.getUserSessions()
+            console.log('路由守卫中加载会话数据完成')
+          } catch (error) {
+            console.error('路由守卫中加载会话数据失败:', error)
+          }
+        }
+      }
       next()
     }
   })

@@ -1,4 +1,9 @@
 <script setup lang='ts'>
+/**
+ * 聊天页面主组件
+ * 功能：处理用户与AI的对话交互，包括发送消息、接收回复、流式响应等
+ */
+
 import type { Ref } from 'vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -9,21 +14,24 @@ import { Message } from './components'
 import { useScroll } from './hooks/useScroll'
 import { useChat } from './hooks/useChat'
 import { useUsingContext } from './hooks/useUsingContext'
-import HeaderComponent from './components/Header/index.vue'
+import HeaderComponent from './components/Header/index.vue' // 移动端场景下头部组件
 import { HoverButton, SvgIcon } from '@/components/common'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
 import { useChatStore, usePromptStore } from '@/store'
-import { fetchChatAPIProcess } from '@/api'
+import { fetchChatAPIProcess, fetchChatAPI } from '@/api'
 import { t } from '@/locales'
 
+// 用于取消请求的控制器
 let controller = new AbortController()
 
+// 是否开启长回复功能（环境变量控制）
 const openLongReply = import.meta.env.VITE_GLOB_OPEN_LONG_REPLY === 'true'
 
 const route = useRoute()
 const dialog = useDialog()
 const ms = useMessage()
 
+// 聊天状态管理
 const chatStore = useChatStore()
 
 const { isMobile } = useBasicLayout()
@@ -31,14 +39,18 @@ const { addChat, updateChat, updateChatSome, getChatByUuidAndIndex } = useChat()
 const { scrollRef, scrollToBottom, scrollToBottomIfAtBottom } = useScroll()
 const { usingContext, toggleUsingContext } = useUsingContext()
 
+// 从路由参数获取 session_id
 const { uuid } = route.params as { uuid: string }
 
+// 当前会话最主要的聊天数据！！
 const dataSources = computed(() => chatStore.getChatByUuid(+uuid))
+// 过滤出非用户消息且包含对话选项的消息（即AI回复）
 const conversationList = computed(() => dataSources.value.filter(item => (!item.inversion && !!item.conversationOptions)))
 
-const prompt = ref<string>('')
-const loading = ref<boolean>(false)
-const inputRef = ref<Ref | null>(null)
+// 响应式数据
+const prompt = ref<string>('') // 用户输入的消息
+const loading = ref<boolean>(false) // 是否加载判断
+const inputRef = ref<Ref | null>(null) // 输入框引用
 
 // 添加PromptStore
 const promptStore = usePromptStore()
@@ -56,6 +68,11 @@ function handleSubmit() {
   onConversation()
 }
 
+/**
+ * 核心聊天对话函数
+ * 处理用户消息发送、AI回复接收、流式响应等完整流程
+ * 这是聊天框发送聊天的主要实现函数
+ */
 async function onConversation() {
   let message = prompt.value
 
@@ -67,12 +84,13 @@ async function onConversation() {
 
   controller = new AbortController()
 
+  // 添加用户消息到聊天记录
   addChat(
     +uuid,
     {
       dateTime: new Date().toLocaleString(),
       text: message,
-      inversion: true,
+      inversion: true, // 标记为用户消息
       error: false,
       conversationOptions: null,
       requestOptions: { prompt: message, options: null },
@@ -83,12 +101,14 @@ async function onConversation() {
   loading.value = true
   prompt.value = ''
 
+  // 构建对话选项（用于上下文连续性）
   let options: Chat.ConversationRequest = {}
   const lastContext = conversationList.value[conversationList.value.length - 1]?.conversationOptions
 
   if (lastContext && usingContext.value)
     options = { ...lastContext }
 
+  // 添加AI思考中的占位消息， 思考中
   addChat(
     +uuid,
     {
@@ -105,6 +125,9 @@ async function onConversation() {
 
   try {
     let lastText = ''
+    /**
+     * 递归函数：处理流式响应，支持长回复的分段处理
+     */
     const fetchChatAPIOnce = async () => {
       await fetchChatAPIProcess<Chat.ConversationResponse>({
         prompt: message,
@@ -113,13 +136,14 @@ async function onConversation() {
         onDownloadProgress: ({ event }) => {
           const xhr = event.target
           const { responseText } = xhr
-          // Always process the final line
+          // 处理流式响应的最后一行数据
           const lastIndex = responseText.lastIndexOf('\n', responseText.length - 2)
           let chunk = responseText
           if (lastIndex !== -1)
             chunk = responseText.substring(lastIndex)
           try {
             const data = JSON.parse(chunk)
+            // 更新AI回复内容
             updateChat(
               +uuid,
               dataSources.value.length - 1,
@@ -134,6 +158,7 @@ async function onConversation() {
               },
             )
 
+            // 处理长回复的分段继续
             if (openLongReply && data.detail.choices[0].finish_reason === 'length') {
               options.parentMessageId = data.id
               lastText = data.text
@@ -144,18 +169,25 @@ async function onConversation() {
             scrollToBottomIfAtBottom()
           }
           catch (error) {
-            //
+            // 解析错误时静默处理
           }
         },
       })
+      // 完成响应后关闭loading状态
       updateChatSome(+uuid, dataSources.value.length - 1, { loading: false })
     }
 
     await fetchChatAPIOnce()
+    // await fetchChatAPI({
+    //   prompt: message,
+    //   options,
+    //   signal: controller.signal,
+    // })
   }
   catch (error: any) {
     const errorMessage = error?.message ?? t('common.wrong')
 
+    // 处理请求取消
     if (error.message === 'canceled') {
       updateChatSome(
         +uuid,
@@ -168,8 +200,10 @@ async function onConversation() {
       return
     }
 
+    // 获取当前聊天记录
     const currentChat = getChatByUuidAndIndex(+uuid, dataSources.value.length - 1)
 
+    // 如果已有部分回复，在末尾添加错误信息
     if (currentChat?.text && currentChat.text !== '') {
       updateChatSome(
         +uuid,
@@ -183,6 +217,7 @@ async function onConversation() {
       return
     }
 
+    // 显示错误消息
     updateChat(
       +uuid,
       dataSources.value.length - 1,
@@ -203,6 +238,10 @@ async function onConversation() {
   }
 }
 
+/**
+ * 重新生成指定消息的回复
+ * @param index 要重新生成的消息索引
+ */
 async function onRegenerate(index: number) {
   if (loading.value)
     return
@@ -220,6 +259,7 @@ async function onRegenerate(index: number) {
 
   loading.value = true
 
+  // 重置指定消息为loading状态
   updateChat(
     +uuid,
     index,
@@ -314,6 +354,9 @@ async function onRegenerate(index: number) {
   }
 }
 
+/**
+ * 导出聊天记录为图片
+ */
 function handleExport() {
   if (loading.value)
     return
@@ -352,6 +395,10 @@ function handleExport() {
   })
 }
 
+/**
+ * 删除指定消息
+ * @param index 要删除的消息索引
+ */
 function handleDelete(index: number) {
   if (loading.value)
     return
@@ -367,6 +414,9 @@ function handleDelete(index: number) {
   })
 }
 
+/**
+ * 清空当前会话的所有聊天记录
+ */
 function handleClear() {
   if (loading.value)
     return
@@ -382,6 +432,10 @@ function handleClear() {
   })
 }
 
+/**
+ * 处理键盘事件（回车发送）
+ * @param event 键盘事件对象
+ */
 function handleEnter(event: KeyboardEvent) {
   if (!isMobile.value) {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -397,6 +451,9 @@ function handleEnter(event: KeyboardEvent) {
   }
 }
 
+/**
+ * 停止当前正在进行的聊天请求
+ */
 function handleStop() {
   if (loading.value) {
     controller.abort()
@@ -460,28 +517,37 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- 聊天页面主容器 -->
   <div class="flex flex-col w-full h-full">
+    <!-- 头部组件(移动端) -->
     <HeaderComponent
       v-if="isMobile"
       :using-context="usingContext"
       @export="handleExport"
       @handle-clear="handleClear"
     />
+    <!-- 主要聊天展示区域 -->
     <main class="flex-1 overflow-hidden">
+      <!-- 聊天消息滚动容器 -->
       <div id="scrollRef" ref="scrollRef" class="h-full overflow-hidden overflow-y-auto">
         <div
           class="w-full max-w-screen-xl m-auto dark:bg-[#101014]"
           :class="[isMobile ? 'p-2' : 'p-4']"
         >
+          <!-- 图片导出包装器 -->
           <div id="image-wrapper" class="relative">
+            <!-- 空状态：没有聊天记录时显示 -->
             <template v-if="!dataSources.length">
               <div class="flex items-center justify-center mt-4 text-center text-neutral-300">
                 <SvgIcon icon="ri:bubble-chart-fill" class="mr-2 text-3xl" />
                 <span>{{ t('chat.newChatTitle') }}</span>
               </div>
             </template>
+            
+            <!-- 聊天消息列表 -->
             <template v-else>
               <div>
+                <!-- 渲染每条聊天消息 -->
                 <Message
                   v-for="(item, index) of dataSources"
                   :key="index"
@@ -493,6 +559,8 @@ onUnmounted(() => {
                   @regenerate="onRegenerate(index)"
                   @delete="handleDelete(index)"
                 />
+                
+                <!-- 停止响应按钮 -->
                 <div class="sticky bottom-0 left-0 flex justify-center">
                   <NButton v-if="loading" type="warning" @click="handleStop">
                     <template #icon>
@@ -507,24 +575,33 @@ onUnmounted(() => {
         </div>
       </div>
     </main>
+    
+    <!-- 底部输入区域 -->
     <footer :class="footerClass">
       <div class="w-full max-w-screen-xl m-auto">
         <div class="flex items-center justify-between space-x-2">
+          <!-- 清空聊天按钮（桌面端） -->
           <HoverButton v-if="!isMobile" @click="handleClear">
             <span class="text-xl text-[#4f555e] dark:text-white">
               <SvgIcon icon="ri:delete-bin-line" />
             </span>
           </HoverButton>
+          
+          <!-- 导出图片按钮（桌面端） -->
           <HoverButton v-if="!isMobile" @click="handleExport">
             <span class="text-xl text-[#4f555e] dark:text-white">
               <SvgIcon icon="ri:download-2-line" />
             </span>
           </HoverButton>
+          
+          <!-- 上下文开关按钮 -->
           <HoverButton @click="toggleUsingContext">
             <span class="text-xl" :class="{ 'text-[#4b9e5f]': usingContext, 'text-[#a8071a]': !usingContext }">
               <SvgIcon icon="ri:chat-history-line" />
             </span>
           </HoverButton>
+          
+          <!-- 消息输入框（支持提示词自动完成） -->
           <NAutoComplete v-model:value="prompt" :options="searchOptions" :render-label="renderOption">
             <template #default="{ handleInput, handleBlur, handleFocus }">
               <NInput
@@ -540,6 +617,8 @@ onUnmounted(() => {
               />
             </template>
           </NAutoComplete>
+          
+          <!-- 发送按钮 -->
           <NButton type="primary" :disabled="buttonDisabled" @click="handleSubmit">
             <template #icon>
               <span class="dark:text-black">

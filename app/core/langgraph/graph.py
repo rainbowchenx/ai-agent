@@ -1,12 +1,6 @@
 """该文件包含LangGraph Agent/工作流和与LLM的交互。"""
 
-from typing import (
-    Any,
-    AsyncGenerator,
-    Dict,
-    Literal,
-    Optional,
-)
+from typing import Any, AsyncGenerator, Dict, Literal, Optional
 
 from asgiref.sync import sync_to_async
 from langchain_core.messages import (
@@ -312,11 +306,9 @@ class LangGraphAgent:
         """
         config = {
             "configurable": {"thread_id": session_id},
-            "callbacks": [
-                CallbackHandler(
-                    environment=settings.ENVIRONMENT.value, debug=False, user_id=user_id, session_id=session_id
-                )
-            ],
+            "callbacks": [CallbackHandler()],
+
+                # environment=settings.ENVIRONMENT.value, debug=False, user_id=user_id, session_id=session_id
         }
         if self._graph is None:
             self._graph = await self.create_graph()

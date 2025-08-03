@@ -6,14 +6,15 @@ import type { FormInst, FormRules } from 'naive-ui';
 import { useRouter } from 'vue-router';
 
 import { SvgIcon } from '@/components/common';
-import { useAppStore, useAuthStore } from '@/store';
+import { useAppStore, useAuthStore, useChatStore } from '@/store';
 import { t } from '@/locales';
 import { fetchRegisterAccount, fetchLoginAccount } from '@/api';
 
-const appStore = useAppStore();
-const authStore = useAuthStore();
-const router = useRouter();
-const message = useMessage();
+const router = useRouter()
+const message = useMessage()
+const authStore = useAuthStore()
+const appStore = useAppStore()
+const chatStore = useChatStore()
 interface loginForm {
   email: string;
   password: string;
@@ -67,6 +68,15 @@ const handleSubmit = async () => {
       message.success('登录成功');
       // 保存登录信息到store
       authStore.setAuthInfo(res.data);
+      
+      // 获取用户会话和聊天记录
+      try {
+        await chatStore.getUserSessions();
+        console.log('会话数据加载完成');
+      } catch (error) {
+        console.error('加载会话数据失败:', error);
+      }
+      
       router.push('/chat');
     }else{
       // 登录失败
