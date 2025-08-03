@@ -4,12 +4,11 @@ import { t } from '@/locales'
 const LOCAL_NAME = 'chatStorage'
 
 export function defaultState(): Chat.ChatState {
-  const uuid = 1002
   return {
-    active: uuid,
+    active: null, // 不使用硬编码UUID，初始状态为null
     usingContext: true,
-    history: [{ uuid, title: t('chat.newChatTitle'), isEdit: false }],
-    chat: [{ uuid, data: [] }],
+    history: [], // 初始状态为空数组，等待从后端获取
+    chat: [], // 初始状态为空数组，等待从后端获取
   }
 }
 

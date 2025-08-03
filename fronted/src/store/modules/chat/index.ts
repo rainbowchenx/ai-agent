@@ -32,7 +32,7 @@ export const useChatStore = defineStore('chat-store', {
      * @param uuid 会话UUID
      */
     getChatByUuid(state: Chat.ChatState) {
-      return (uuid?: number) => {
+      return (uuid?: string | number) => {
         if (uuid)
           return state.chat.find(item => item.uuid === uuid)?.data ?? []
         return state.chat.find(item => item.uuid === state.active)?.data ?? []
@@ -83,7 +83,7 @@ export const useChatStore = defineStore('chat-store', {
      * @param uuid 会话UUID
      * @param edit 编辑内容
      */
-    async updateHistory(uuid: number, edit: Partial<Chat.History>) {
+    async updateHistory(uuid: string | number, edit: Partial<Chat.History>) {
       const index = this.history.findIndex(item => item.uuid === uuid)
       if (index !== -1) {
         this.history[index] = { ...this.history[index], ...edit }
@@ -146,7 +146,7 @@ export const useChatStore = defineStore('chat-store', {
      * 设置活跃会话
      * @param uuid 会话UUID
      */
-    async setActive(uuid: number) {
+    async setActive(uuid: string | number) {
       this.active = uuid
       return await this.reloadRoute(uuid)
     },
@@ -156,8 +156,8 @@ export const useChatStore = defineStore('chat-store', {
      * @param uuid 会话UUID
      * @param index 消息索引
      */
-    getChatByUuidAndIndex(uuid: number, index: number) {
-      if (!uuid || uuid === 0) {
+    getChatByUuidAndIndex(uuid: string | number, index: number) {
+      if (!uuid || uuid === 0 || uuid === '') {
         if (this.chat.length)
           return this.chat[0].data[index]
         return null
@@ -173,8 +173,8 @@ export const useChatStore = defineStore('chat-store', {
      * @param uuid 会话UUID
      * @param chat 聊天记录
      */
-    addChatByUuid(uuid: number, chat: Chat.Chat) {
-      if (!uuid || uuid === 0) {
+    addChatByUuid(uuid: string | number, chat: Chat.Chat) {
+      if (!uuid || uuid === 0 || uuid === '') {
         if (this.history.length === 0) {
           const uuid = Date.now()
           this.history.push({ uuid, title: chat.text, isEdit: false })
@@ -188,6 +188,7 @@ export const useChatStore = defineStore('chat-store', {
             this.history[0].title = chat.text
           this.recordState()
         }
+        return
       }
 
       const index = this.chat.findIndex(item => item.uuid === uuid)
@@ -205,8 +206,8 @@ export const useChatStore = defineStore('chat-store', {
      * @param index 消息索引
      * @param chat 聊天记录
      */
-    updateChatByUuid(uuid: number, index: number, chat: Chat.Chat) {
-      if (!uuid || uuid === 0) {
+    updateChatByUuid(uuid: string | number, index: number, chat: Chat.Chat) {
+      if (!uuid || uuid === 0 || uuid === '') {
         if (this.chat.length) {
           this.chat[0].data[index] = chat
           this.recordState()
@@ -227,8 +228,8 @@ export const useChatStore = defineStore('chat-store', {
      * @param index 消息索引
      * @param chat 更新内容
      */
-    updateChatSomeByUuid(uuid: number, index: number, chat: Partial<Chat.Chat>) {
-      if (!uuid || uuid === 0) {
+    updateChatSomeByUuid(uuid: string | number, index: number, chat: Partial<Chat.Chat>) {
+      if (!uuid || uuid === 0 || uuid === '') {
         if (this.chat.length) {
           this.chat[0].data[index] = { ...this.chat[0].data[index], ...chat }
           this.recordState()
@@ -248,8 +249,8 @@ export const useChatStore = defineStore('chat-store', {
      * @param uuid 会话UUID
      * @param index 消息索引
      */
-    deleteChatByUuid(uuid: number, index: number) {
-      if (!uuid || uuid === 0) {
+    deleteChatByUuid(uuid: string | number, index: number) {
+      if (!uuid || uuid === 0 || uuid === '') {
         if (this.chat.length) {
           this.chat[0].data.splice(index, 1)
           this.recordState()
@@ -268,8 +269,8 @@ export const useChatStore = defineStore('chat-store', {
      * 清空聊天记录
      * @param uuid 会话UUID
      */
-    clearChatByUuid(uuid: number) {
-      if (!uuid || uuid === 0) {
+    clearChatByUuid(uuid: string | number) {
+      if (!uuid || uuid === 0 || uuid === '') {
         if (this.chat.length) {
           this.chat[0].data = []
           this.recordState()
@@ -330,10 +331,10 @@ export const useChatStore = defineStore('chat-store', {
      * 加载指定会话的聊天记录
      * @param sessionId 会话ID
      */
-    async loadSessionMessages(sessionId: number) {
+    async loadSessionMessages(sessionId: string | number) {
       try {
         console.log(`开始获取会话 ${sessionId} 的消息...`)
-        const res: any = await fetchSessionMessages(sessionId.toString())
+        const res: any = await fetchSessionMessages(typeof sessionId === 'string' ? sessionId : sessionId.toString())
         console.log(`获取会话 ${sessionId} 的消息响应:`, res)
         
         if (res.status === 200 && res.data && res.data.messages) {
@@ -381,9 +382,18 @@ export const useChatStore = defineStore('chat-store', {
      * 重新加载路由
      * @param uuid 会话UUID (可选)
      */
-    async reloadRoute(uuid?: number) {
+    async reloadRoute(uuid?: string | number) {
       this.recordState()
-      await router.push({ name: 'Chat', params: { uuid } })
+      
+      // 确保路由参数和store状态一致
+      const targetUuid = uuid || this.active
+      if (targetUuid) {
+        await router.push({ name: 'Chat', params: { uuid: targetUuid } })
+        console.log('路由更新成功:', targetUuid)
+      } else {
+        await router.push({ name: 'Chat' })
+        console.log('路由更新为默认页面')
+      }
     },
 
     /**

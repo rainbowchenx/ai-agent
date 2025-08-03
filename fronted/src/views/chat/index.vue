@@ -43,7 +43,7 @@ const { usingContext, toggleUsingContext } = useUsingContext()
 const { uuid } = route.params as { uuid: string }
 
 // 当前会话最主要的聊天数据！！
-const dataSources = computed(() => chatStore.getChatByUuid(+uuid))
+const dataSources = computed(() => chatStore.getChatByUuid(uuid))
 // 过滤出非用户消息且包含对话选项的消息（即AI回复）
 const conversationList = computed(() => dataSources.value.filter(item => (!item.inversion && !!item.conversationOptions)))
 
@@ -61,7 +61,7 @@ const { promptList: promptTemplate } = storeToRefs<any>(promptStore)
 // 未知原因刷新页面，loading 状态不会重置，手动重置
 dataSources.value.forEach((item, index) => {
   if (item.loading)
-    updateChatSome(+uuid, index, { loading: false })
+    updateChatSome(uuid, index, { loading: false })
 })
 
 function handleSubmit() {
@@ -86,7 +86,7 @@ async function onConversation() {
 
   // 添加用户消息到聊天记录
   addChat(
-    +uuid,
+    uuid,
     {
       dateTime: new Date().toLocaleString(),
       text: message,
@@ -110,7 +110,7 @@ async function onConversation() {
 
   // 添加AI思考中的占位消息， 思考中
   addChat(
-    +uuid,
+    uuid,
     {
       dateTime: new Date().toLocaleString(),
       text: t('chat.thinking'),
@@ -145,7 +145,7 @@ async function onConversation() {
             const data = JSON.parse(chunk)
             // 更新AI回复内容
             updateChat(
-              +uuid,
+              uuid,
               dataSources.value.length - 1,
               {
                 dateTime: new Date().toLocaleString(),
@@ -174,7 +174,7 @@ async function onConversation() {
         },
       })
       // 完成响应后关闭loading状态
-      updateChatSome(+uuid, dataSources.value.length - 1, { loading: false })
+      updateChatSome(uuid, dataSources.value.length - 1, { loading: false })
     }
 
     await fetchChatAPIOnce()
@@ -190,7 +190,7 @@ async function onConversation() {
     // 处理请求取消
     if (error.message === 'canceled') {
       updateChatSome(
-        +uuid,
+        uuid,
         dataSources.value.length - 1,
         {
           loading: false,
@@ -201,12 +201,12 @@ async function onConversation() {
     }
 
     // 获取当前聊天记录
-    const currentChat = getChatByUuidAndIndex(+uuid, dataSources.value.length - 1)
+    const currentChat = getChatByUuidAndIndex(uuid, dataSources.value.length - 1)
 
     // 如果已有部分回复，在末尾添加错误信息
     if (currentChat?.text && currentChat.text !== '') {
       updateChatSome(
-        +uuid,
+        uuid,
         dataSources.value.length - 1,
         {
           text: `${currentChat.text}\n[${errorMessage}]`,
@@ -219,7 +219,7 @@ async function onConversation() {
 
     // 显示错误消息
     updateChat(
-      +uuid,
+      uuid,
       dataSources.value.length - 1,
       {
         dateTime: new Date().toLocaleString(),
@@ -261,7 +261,7 @@ async function onRegenerate(index: number) {
 
   // 重置指定消息为loading状态
   updateChat(
-    +uuid,
+    uuid,
     index,
     {
       dateTime: new Date().toLocaleString(),
@@ -292,7 +292,7 @@ async function onRegenerate(index: number) {
           try {
             const data = JSON.parse(chunk)
             updateChat(
-              +uuid,
+              uuid,
               index,
               {
                 dateTime: new Date().toLocaleString(),
@@ -317,14 +317,14 @@ async function onRegenerate(index: number) {
           }
         },
       })
-      updateChatSome(+uuid, index, { loading: false })
+      updateChatSome(uuid, index, { loading: false })
     }
     await fetchChatAPIOnce()
   }
   catch (error: any) {
     if (error.message === 'canceled') {
       updateChatSome(
-        +uuid,
+        uuid,
         index,
         {
           loading: false,
@@ -336,7 +336,7 @@ async function onRegenerate(index: number) {
     const errorMessage = error?.message ?? t('common.wrong')
 
     updateChat(
-      +uuid,
+      uuid,
       index,
       {
         dateTime: new Date().toLocaleString(),
@@ -409,7 +409,7 @@ function handleDelete(index: number) {
     positiveText: t('common.yes'),
     negativeText: t('common.no'),
     onPositiveClick: () => {
-      chatStore.deleteChatByUuid(+uuid, index)
+      chatStore.deleteChatByUuid(uuid, index)
     },
   })
 }
@@ -427,7 +427,7 @@ function handleClear() {
     positiveText: t('common.yes'),
     negativeText: t('common.no'),
     onPositiveClick: () => {
-      chatStore.clearChatByUuid(+uuid)
+      chatStore.clearChatByUuid(uuid)
     },
   })
 }
