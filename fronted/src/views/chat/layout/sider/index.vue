@@ -10,7 +10,7 @@ import List from './List.vue'
 import Footer from './Footer.vue'
 import { useAppStore, useChatStore } from '@/store'
 import { useBasicLayout } from '@/hooks/useBasicLayout'
-import { PromptStore, SvgIcon } from '@/components/common'
+import { PromptStore, KnowledgeStore, SvgIcon } from '@/components/common'
 import { t } from '@/locales'
 import { fetchCreateSession } from '@/api'
 
@@ -26,6 +26,8 @@ const { isMobile } = useBasicLayout()
 
 // 控制提示词商店显示状态
 const show = ref(false)
+// 控制知识库显示状态
+const showKnowledge = ref(false)
 
 // 计算侧边栏折叠状态
 const collapsed = computed(() => appStore.siderCollapsed)
@@ -154,6 +156,12 @@ watch(
               {{ $t('store.siderButton') }}
             </NButton>
           </div>
+          <!-- 知识库按钮 -->
+          <div class="flex-1">
+            <NButton block @click="showKnowledge = true">
+              {{ $t('knowledge.siderButton') }}
+            </NButton>
+          </div>
           <!-- 清空历史按钮 -->
           <NButton @click="handleClearAll">
             <SvgIcon icon="ri:close-circle-line" />
@@ -173,4 +181,6 @@ watch(
   
   <!-- 提示词商店组件 -->
   <PromptStore v-model:visible="show" />
+  <!-- 知识库组件 -->
+  <KnowledgeStore v-model:visible="showKnowledge" />
 </template>

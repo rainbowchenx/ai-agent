@@ -26,10 +26,10 @@ class User(BaseModel, table=True):
         sessions: 用户关联的会话列表（一对多关系）
     """
 
-    id: int = Field(default=None, primary_key=True, description="用户唯一标识符")
-    email: str = Field(unique=True, index=True, description="用户邮箱地址")
-    hashed_password: str = Field(description="经过哈希处理的密码")
-    sessions: List["Session"] = Relationship(back_populates="user", description="用户关联的会话")
+    id: int = Field(default=None, primary_key=True)
+    email: str = Field(unique=True, index=True)
+    hashed_password: str 
+    sessions: List["Session"] = Relationship(back_populates="user")
 
     def verify_password(self, password: str) -> bool:
         """验证提供的密码是否与存储的哈希值匹配。
