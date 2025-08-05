@@ -23,6 +23,7 @@ AI Agent 是一个功能完整的智能对话系统，具备以下核心能力�
 ## 🛠 技术栈
 
 ### 后端技术栈
+
 - **框架**: FastAPI (高性能异步 API 框架)
 - **AI 引擎**: LangChain + LangGraph (AI 工作流)
 - **数据库**: PostgreSQL (主数据库) + Chroma (向量数据库)
@@ -31,6 +32,7 @@ AI Agent 是一个功能完整的智能对话系统，具备以下核心能力�
 - **API 文档**: 自动生成 Swagger/OpenAPI 文档
 
 ### 前端技术栈
+
 - **框架**: Vue 3 + TypeScript
 - **状态管理**: Pinia
 - **路由**: Vue Router 4
@@ -38,20 +40,18 @@ AI Agent 是一个功能完整的智能对话系统，具备以下核心能力�
 - **构建工具**: Vite
 - **包管理**: pnpm
 
-### 开发工具
-- **代码质量**: ruff, black, isort
-- **测试**: pytest
-- **环境管理**: 多环境配置支持
-
 ## ✨ 功能特性
 
 ### 核心功能
+
 - 🔐 **用户认证系统**
+
   - JWT 令牌认证
   - 用户注册/登录
   - 权限管理
 
 - 💬 **智能对话**
+
   - 多轮对话支持
   - 上下文记忆
   - 流式响应
@@ -64,12 +64,14 @@ AI Agent 是一个功能完整的智能对话系统，具备以下核心能力�
   - 文档管理界面
 
 ### 安全特性
+
 - 🔒 **输入验证**: 防止 XSS 攻击
 - 🛡️ **速率限制**: 基于 slowapi 的请求限制
-- 🔐 **数据加密**: 密码加密存储
+- 🔐 **数据加密**: 密码加密存储[暂未实现]
 - 🚫 **SQL 注入防护**: 参数化查询
 
 ### 开发体验
+
 - 📝 **完整日志**: 结构化日志记录
 - 🔧 **热重载**: 开发环境自动重载
 - 📊 **性能监控**: 请求性能追踪
@@ -94,12 +96,14 @@ cd ai-agent
 ### 2. 后端设置
 
 #### 安装依赖
+
 ```bash
 # 使用 uv 安装 Python 依赖
 uv sync
 ```
 
 #### 环境配置
+
 ```bash
 # 复制环境配置文件
 cp .env.example .env.development
@@ -112,9 +116,8 @@ cp .env.example .env.development
 ```
 
 #### 启动后端服务
+
 ```bash
-# 开发环境
-make dev
 
 # 或手动启动
 source scripts/set_env.sh development
@@ -162,21 +165,6 @@ ai-agent/
 │   └── package.json
 ├── scripts/              # 部署脚本
 ├── pyproject.toml        # Python 项目配置
-└── Makefile             # 构建命令
-```
-
-
-### 环境管理
-
-```bash
-# 设置开发环境
-make set-env ENV=development
-
-# 设置生产环境
-make set-env ENV=production
-
-# 清理环境
-make clean
 ```
 
 ### 数据库操作
@@ -188,7 +176,6 @@ cat schema.sql
 # 数据库迁移 (待实现)
 # make migrate
 ```
-
 
 ## 📚 知识库功能
 
@@ -213,8 +200,14 @@ cat schema.sql
 - **前端**: Vue3 组件 + Naive UI
 - **后端**: Chroma 向量数据库 + 文档解析
 - **状态管理**: Pinia 状态管理
-- **国际化**: 支持中英文切换
+- **国际化**: vuei18n 支持中英文切换
 
+### 效果图
 
+<img src="./asset/登录.png" />
+<img src="./asset/主页面.png" />
+<img src="./asset/提示词商店.png" />
+<img src="./asset/知识库.png" />
+<img src="./asset/设置.png" />
 
 **注意**: 本项目正在积极开发中，部分功能可能尚未完全实现

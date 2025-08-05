@@ -20,7 +20,6 @@ from app.utils.sanitization import sanitize_email, sanitize_string, validate_pas
 from app.core.langgraph.graph import LangGraphAgent
 
 agent = LangGraphAgent()
-
 router = APIRouter()  # 路由
 security = HTTPBearer()  
 db_service = DatabaseService()  # 数据库服务，存储用户、会话、消息等数据

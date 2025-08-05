@@ -43,11 +43,11 @@ function http<T = any>(
    * @returns 处理后的响应数据
    */
   const successHandler = (res: AxiosResponse<Response<T>>) => {
-    const authStore = useAuthStore()
+    // const authStore = useAuthStore()
 
     // 成功状态或字符串响应
     // if (res.data)
-    return res
+    return res.data
 
     // 未授权状态，清除认证信息
     // if (res.data.status === 'Unauthorized') {
@@ -193,6 +193,6 @@ export function patch<T = any>(
     afterRequest,
   })
 }
-
 // 默认导出POST方法
 // export default post
+

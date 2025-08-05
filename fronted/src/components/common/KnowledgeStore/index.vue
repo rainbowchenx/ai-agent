@@ -203,6 +203,7 @@ const formatFileSize = (bytes: number) => {
   if (bytes === 0) return '0 B'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
+  // 计算文件大小单位
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
@@ -217,7 +218,7 @@ const getStatusTag = (status: string) => {
   return statusMap[status as keyof typeof statusMap] || { type: 'default', text: t('knowledge.unknown') }
 }
 
-// 数据表格列定义
+// 数据表格列定义，基于naive ui
 const columns: DataTableColumns<Knowledge.KnowledgeItem> = [
   {
     title: t('knowledge.documentName'),
