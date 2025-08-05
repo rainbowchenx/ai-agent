@@ -1,201 +1,302 @@
-# FastAPI LangGraph Agent Template
+# AI Agent 智能对话系统
 
-A production-ready FastAPI template for building AI agent applications with LangGraph integration. This template provides a robust foundation for building scalable, secure, and maintainable AI agent services.
+一个基于 FastAPI + Vue3 的现代化 AI 对话系统，集成了 LangGraph 工作流和知识库管理功能。
 
-## 🌟 Features
+## 📋 目录
 
-- **Production-Ready Architecture**
+- [项目概述](#项目概述)
+- [技术栈](#技术栈)
+- [功能特性](#功能特性)
+- [快速开始](#快速开始)
+- [项目结构](#项目结构)
+- [开发指南](#开发指南)
+- [部署说明](#部署说明)
+- [贡献指南](#贡献指南)
 
-  - FastAPI for high-performance async API endpoints
-  - LangGraph integration for AI agent workflows
+## 🎯 项目概述
 
-  - Structured logging with environment-specific formatting
-  - Rate limiting with configurable rules
-  - PostgreSQL for data persistence
+AI Agent 是一个功能完整的智能对话系统，具备以下核心能力：
 
-- **Security**
+- 🤖 **智能对话**: 基于 LangChain 和 LangGraph 的 AI 对话引擎
+- 📚 **知识库管理**: 支持文档上传、向量化存储和智能检索
+- 🔐 **用户认证**: JWT 身份验证和权限管理
+- 🌐 **现代化界面**: 基于 Vue3 + TypeScript 的响应式前端
+- 📊 **实时监控**: 完整的日志记录和性能监控
 
-  - JWT-based authentication
-  - Session management
-  - Input sanitization
-  - CORS configuration
-  - Rate limiting protection
+## 🛠 技术栈
 
-- **Developer Experience**
+### 后端技术栈
+- **框架**: FastAPI (高性能异步 API 框架)
+- **AI 引擎**: LangChain + LangGraph (AI 工作流)
+- **数据库**: PostgreSQL (主数据库) + Chroma (向量数据库)
+- **认证**: JWT + bcrypt (安全身份验证)
+- **包管理**: uv (快速 Python 包管理)
+- **API 文档**: 自动生成 Swagger/OpenAPI 文档
 
-  - Environment-specific configuration
-  - Comprehensive logging system
-  - Clear project structure
-  - Type hints throughout
-  - Easy local development setup
+### 前端技术栈
+- **框架**: Vue 3 + TypeScript
+- **状态管理**: Pinia
+- **路由**: Vue Router 4
+- **UI 组件**: Naive UI
+- **构建工具**: Vite
+- **包管理**: pnpm
 
-## 🚀 Quick Start
+### 开发工具
+- **代码质量**: ruff, black, isort
+- **测试**: pytest
+- **环境管理**: 多环境配置支持
 
-### Prerequisites
+## ✨ 功能特性
 
-- Python 3.13+
-- PostgreSQL ([see Database setup](#database-setup))
+### 核心功能
+- 🔐 **用户认证系统**
+  - JWT 令牌认证
+  - 用户注册/登录
+  - 权限管理
 
-### Environment Setup
+- 💬 **智能对话**
+  - 多轮对话支持
+  - 上下文记忆
+  - 流式响应
+  - 对话历史管理
 
-1. Clone the repository:
+- 📚 **知识库系统**
+  - 多格式文档上传 (PDF, Word, TXT, Markdown)
+  - 文档向量化处理
+  - 智能检索和问答
+  - 文档管理界面
+
+### 安全特性
+- 🔒 **输入验证**: 防止 XSS 攻击
+- 🛡️ **速率限制**: 基于 slowapi 的请求限制
+- 🔐 **数据加密**: 密码加密存储
+- 🚫 **SQL 注入防护**: 参数化查询
+
+### 开发体验
+- 📝 **完整日志**: 结构化日志记录
+- 🔧 **热重载**: 开发环境自动重载
+- 📊 **性能监控**: 请求性能追踪
+- 🌍 **国际化**: 多语言支持
+
+## 🚀 快速开始
+
+### 环境要求
+
+- **Python**: 3.13+
+- **Node.js**: 18+
+- **PostgreSQL**: 14+
+- **包管理器**: uv (后端), pnpm (前端)
+
+### 1. 克隆项目
 
 ```bash
 git clone <repository-url>
-cd <project-directory>
+cd ai-agent
 ```
 
-2. Create and activate a virtual environment:
+### 2. 后端设置
 
+#### 安装依赖
 ```bash
+# 使用 uv 安装 Python 依赖
 uv sync
 ```
 
-3. Copy the example environment file:
-
+#### 环境配置
 ```bash
-cp .env.example .env.[development|staging|production] # e.g. .env.development
+# 复制环境配置文件
+cp .env.example .env.development
+
+# 编辑配置文件，设置数据库连接等信息
+# 主要配置项：
+# - POSTGRES_URL: PostgreSQL 数据库连接
+# - OPENAI_API_KEY: OpenAI API 密钥
+# - JWT_SECRET_KEY: JWT 密钥
 ```
 
-4. Update the `.env` file with your configuration (see `.env.example` for reference)
-
-### Database setup
-
-1. Create a PostgreSQL database (e.g Supabase or local PostgreSQL)
-2. Update the database connection string in your `.env` file:
-
+#### 启动后端服务
 ```bash
-POSTGRES_URL="postgresql://:your-db-password@POSTGRES_HOST:POSTGRES_PORT/POSTGRES_DB"
+# 开发环境
+make dev
+
+# 或手动启动
+source scripts/set_env.sh development
+uv run uvicorn app.main:app --reload --port 8000
 ```
 
-- You don't have to create the tables manually, the ORM will handle that for you.But if you faced any issues,please run the `schemas.sql` file to create the tables manually.
+访问 API 文档: http://localhost:8000/docs
 
-### Running the Application
-
-#### Local Development
-
-1. Install dependencies:
+### 3. 前端设置
 
 ```bash
+# 进入前端目录
+cd fronted
+
+# 安装依赖
+pnpm install
+
+# 启动开发服务器
+pnpm dev
+```
+
+访问前端应用: http://localhost:5173
+
+## 📁 项目结构
+
+```
+ai-agent/
+├── app/                    # 后端应用
+│   ├── api/               # API 路由
+│   │   └── v1/           # API v1 版本
+│   ├── core/             # 核心模块
+│   │   ├── config.py     # 配置管理
+│   │   ├── langgraph/    # LangGraph 工作流
+│   │   └── prompts/      # 提示词模板
+│   ├── models/           # 数据模型
+│   ├── schemas/          # Pydantic 模式
+│   ├── services/         # 业务服务
+│   └── utils/            # 工具函数
+├── fronted/              # 前端应用
+│   ├── src/
+│   │   ├── components/   # Vue 组件
+│   │   ├── views/        # 页面视图
+│   │   ├── store/        # Pinia 状态管理
+│   │   └── api/          # API 接口
+│   └── package.json
+├── scripts/              # 部署脚本
+├── pyproject.toml        # Python 项目配置
+└── Makefile             # 构建命令
+```
+
+## 🛠 开发指南
+
+### 代码规范
+
+```bash
+# 代码格式化
+make format
+
+# 代码检查
+make lint
+
+# 运行测试
+make test
+```
+
+### 环境管理
+
+```bash
+# 设置开发环境
+make set-env ENV=development
+
+# 设置生产环境
+make set-env ENV=production
+
+# 清理环境
+make clean
+```
+
+### 数据库操作
+
+```bash
+# 查看数据库模式
+cat schema.sql
+
+# 数据库迁移 (待实现)
+# make migrate
+```
+
+## 🚀 部署说明
+
+### 生产环境部署
+
+1. **环境准备**
+```bash
+# 设置生产环境
+make set-env ENV=production
+
+# 安装依赖
 uv sync
 ```
 
-2. Run the application:
-
+2. **数据库设置**
 ```bash
-make [dev|staging|production] # e.g. make dev
+# 创建 PostgreSQL 数据库
+# 导入 schema.sql
+psql -d your_database -f schema.sql
 ```
 
-1. Go to Swagger UI:
-
+3. **启动服务**
 ```bash
-http://localhost:8000/docs
+# 使用 Makefile
+make prod
+
+# 或手动启动
+source scripts/set_env.sh production
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-## 🔧 Configuration
+### Docker 部署 (待实现)
 
-The application uses a flexible configuration system with environment-specific settings:
+```bash
+# 构建镜像
+docker build -t ai-agent .
 
-- `.env.development`
--
+# 运行容器
+docker run -p 8000:8000 ai-agent
+```
 
-# 知识库功能说明
+## 📚 知识库功能
 
-## 概述
+### 功能概述
 
-知识库功能允许用户上传和管理文档，这些文档将被处理并存储为向量数据，用于增强 AI 对话的上下文理解能力。
+知识库系统允许用户上传和管理文档，这些文档将被处理并存储为向量数据，用于增强 AI 对话的上下文理解能力。
 
-## 功能特性
+### 支持格式
 
-### 1. 文档上传
+- **文档格式**: PDF、Word (.doc/.docx)、TXT、Markdown (.md)
+- **上传方式**: 拖拽上传或点击选择文件
+- **文件大小**: 根据后端配置调整
 
-- 支持多种文档格式：PDF、Word (.doc/.docx)、TXT、Markdown (.md)
-- 拖拽上传或点击选择文件
-- 支持文档描述添加
-- 实时上传进度显示
+### 使用方法
 
-### 2. 文档管理
+1. **访问知识库**: 在聊天页面左侧边栏找到"知识库"按钮
+2. **上传文档**: 点击"上传文档"，选择文件并添加描述
+3. **管理文档**: 查看、搜索、删除已上传的文档
 
-- 文档列表展示
-- 搜索和过滤功能
-- 文档状态监控（处理中/已完成/失败）
-- 文档删除功能
+### 技术实现
 
-### 3. 文档信息
+- **前端**: Vue3 组件 + Naive UI
+- **后端**: Chroma 向量数据库 + 文档解析
+- **状态管理**: Pinia 状态管理
+- **国际化**: 支持中英文切换
 
-- 文件名称和描述
-- 文件类型和大小
-- 上传时间
-- 处理状态
-- 向量数量统计
+## 🤝 贡献指南
 
-## 使用方法
+### 开发流程
 
-### 访问知识库
+1. Fork 项目
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 创建 Pull Request
 
-1. 在聊天页面左侧边栏找到"知识库"按钮
-2. 点击按钮打开知识库管理界面
+### 代码规范
 
-### 上传文档
+- 遵循 PEP 8 Python 代码规范
+- 使用 TypeScript 进行前端开发
+- 添加适当的注释和文档
+- 确保测试覆盖率
 
-1. 点击"上传文档"按钮
-2. 选择要上传的文件（支持拖拽）
-3. 输入文档描述
-4. 点击"上传"按钮
+## 📄 许可证
 
-### 管理文档
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
-1. 在文档列表中查看所有已上传的文档
-2. 使用搜索框快速查找特定文档
-3. 点击删除按钮移除不需要的文档
+## 📞 联系方式
 
-## 技术实现
+- 项目维护者: rain <lcy1664373735@163.com>
+- 项目地址: [GitHub Repository]
 
-### 前端组件
+---
 
-- `KnowledgeStore/index.vue` - 知识库主组件
-- `store/modules/knowledge/` - 状态管理
-- `api/knowledge.ts` - API 接口封装
-- `typings/knowledge.d.ts` - 类型定义
-
-### 国际化支持
-
-- 中文：`locales/zh-CN.ts`
-- 英文：`locales/en-US.ts`
-
-### 样式设计
-
-- 采用项目统一的配色方案
-- 响应式设计，支持移动端
-- 使用 Naive UI 组件库
-
-## 后续开发计划
-
-### 后端集成
-
-- [ ] Chroma 向量数据库集成
-- [ ] 文档解析和向量化处理
-- [ ] 文档检索 API
-- [ ] 向量相似度搜索
-
-### 功能增强
-
-- [ ] 文档预览功能
-- [ ] 批量上传
-- [ ] 文档分类管理
-- [ ] 向量检索结果展示
-- [ ] 知识库在对话中的应用
-
-### 性能优化
-
-- [ ] 大文件上传优化
-- [ ] 分页加载
-- [ ] 缓存机制
-- [ ] 异步处理状态更新
-
-## 注意事项
-
-1. 目前前端界面已完成，但后端 API 尚未实现
-2. 使用模拟数据进行界面测试
-3. 文件上传大小限制需要根据后端配置调整
-4. 支持的文档格式可能需要根据后端处理能力调整
+**注意**: 本项目正在积极开发中，部分功能可能尚未完全实现。请查看 Issues 了解最新状态。
