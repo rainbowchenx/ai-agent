@@ -11,6 +11,12 @@ from app.schemas.chat import (
     StreamResponse,
 )
 from app.schemas.graph import GraphState
+from app.schemas.knowledge import (
+    KnowledgeDocumentResponse,
+    KnowledgeSearchRequest,
+    KnowledgeSearchResult,
+    APIResponse,
+)
 
 # 导出所有数据模型，供其他模块使用
 __all__ = [
@@ -20,4 +26,8 @@ __all__ = [
     "Message",
     "StreamResponse",
     "GraphState",
+    "KnowledgeDocumentResponse",
+    "KnowledgeSearchRequest",
+    "KnowledgeSearchResult",
+    "APIResponse",
 ]

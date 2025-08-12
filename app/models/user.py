@@ -11,6 +11,7 @@ from app.models.base import BaseModel
 
 if TYPE_CHECKING:
     from app.models.session import Session
+    from app.models.knowledge import KnowledgeDocument
 
 
 class User(BaseModel, table=True):
@@ -30,6 +31,7 @@ class User(BaseModel, table=True):
     email: str = Field(unique=True, index=True)
     hashed_password: str 
     sessions: List["Session"] = Relationship(back_populates="user")
+    knowledge_documents: List["KnowledgeDocument"] = Relationship(back_populates="user")
 
     def verify_password(self, password: str) -> bool:
         """验证提供的密码是否与存储的哈希值匹配。

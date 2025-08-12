@@ -166,6 +166,13 @@ class Settings:
         self.POSTGRES_MAX_OVERFLOW = int(os.getenv("POSTGRES_MAX_OVERFLOW", "10"))
         self.CHECKPOINT_TABLES = ["checkpoint_blobs", "checkpoint_writes", "checkpoints"]
 
+        # Chroma Configuration，包括数据存储路径，表名，嵌入模型，默认的嵌入维度以及相似性检索算法
+        self.CHROMA_PERSIST_DIRECTORY = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
+        self.CHROMA_COLLECTION_NAME = os.getenv("CHROMA_COLLECTION_NAME", "knowledge_base")
+        self.CHROMA_EMBEDDING_MODEL = os.getenv("CHROMA_EMBEDDING_MODEL", "text-embedding-ada-002")
+        self.CHROMA_EMBEDDING_DIMENSION = int(os.getenv("CHROMA_EMBEDDING_DIMENSION", "1536"))
+        self.CHROMA_SIMILARITY_METRIC = os.getenv("CHROMA_SIMILARITY_METRIC", "cosine")
+
         # Rate Limiting Configuration
         self.RATE_LIMIT_DEFAULT = parse_list_from_env("RATE_LIMIT_DEFAULT", ["200 per day", "50 per hour"])
 
