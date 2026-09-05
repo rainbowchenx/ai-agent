@@ -1,0 +1,16 @@
+{
+  "name": "agent2026",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "test": "turbo run test",
+    "dev:server": "pnpm --filter @agent2026/server dev",
+    "dev:desktop": "pnpm --filter @agent2026/desktop dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0"
+  }
+}
