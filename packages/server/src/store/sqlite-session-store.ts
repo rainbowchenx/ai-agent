@@ -66,6 +66,16 @@ export class SqliteSessionStore implements SessionStore {
     sessionId: string,
     message: AgentMessage,
   ): Promise<void> {
+    await this.appendMessagesBatch(sessionId, [message]);
+  }
+
+  async appendMessagesBatch(
+    sessionId: string,
+    messages: AgentMessage[],
+  ): Promise<void> {
+    if (messages.length === 0) {
+      return;
+    }
     const now = new Date().toISOString();
     const write = this.db.transaction(() => {
       const updated = this.db
@@ -74,12 +84,13 @@ export class SqliteSessionStore implements SessionStore {
       if (updated.changes === 0) {
         throw new Error(`Session not found: ${sessionId}`);
       }
-      this.db
-        .prepare(
-          `INSERT INTO messages (session_id, payload, created_at)
-           VALUES (?, ?, ?)`,
-        )
-        .run(sessionId, JSON.stringify(message), now);
+      const insert = this.db.prepare(
+        `INSERT INTO messages (session_id, payload, created_at)
+         VALUES (?, ?, ?)`,
+      );
+      for (const message of messages) {
+        insert.run(sessionId, JSON.stringify(message), now);
+      }
     });
     write();
   }

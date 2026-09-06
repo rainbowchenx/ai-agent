@@ -85,6 +85,56 @@ describe("SqliteSessionStore", () => {
     expect(listed.map((item) => item.id)).toContain(id);
   });
 
+  it("appends assistant+tool in one transaction via appendMessagesBatch", async () => {
+    const db = await freshDb();
+    const store = new SqliteSessionStore(db);
+    const { id } = await store.create({ title: "batch" });
+
+    const assistant: AgentMessage = {
+      role: "assistant",
+      content: "",
+      toolCalls: [
+        { id: "c1", name: "read_file", arguments: { path: "a.txt" } },
+      ],
+    };
+    const tool: AgentMessage = {
+      role: "tool",
+      toolCallId: "c1",
+      content: "ok",
+    };
+
+    try {
+      await store.appendMessagesBatch(id, [assistant, tool]);
+      const messages = await store.getMessages(id);
+      expect(messages).toEqual([assistant, tool]);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("rolls back appendMessagesBatch when the session is missing", async () => {
+    const db = await freshDb();
+    const store = new SqliteSessionStore(db);
+    const assistant: AgentMessage = {
+      role: "assistant",
+      content: "",
+      toolCalls: [{ id: "c1", name: "read_file", arguments: { path: "a.txt" } }],
+    };
+
+    try {
+      await expect(
+        store.appendMessagesBatch("does-not-exist", [assistant]),
+      ).rejects.toThrow(/Session not found/);
+
+      const leftover = db
+        .prepare(`SELECT COUNT(*) as n FROM messages`)
+        .get() as { n: number };
+      expect(leftover.n).toBe(0);
+    } finally {
+      db.close();
+    }
+  });
+
   it("returns null for a missing session", async () => {
     const db = await freshDb();
     const store = new SqliteSessionStore(db);

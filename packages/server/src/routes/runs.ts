@@ -115,17 +115,17 @@ async function startRun(
     sessionId: request.sessionId,
   });
 
-  const controller = deps.hub.create(runId);
-  socketRuns.add(runId);
-
-  const userMessage: Extract<AgentMessage, { role: "user" }> = {
-    role: "user",
-    content: request.content,
-  };
-  const prior = await deps.sessionStore.getMessages(request.sessionId);
-  await deps.sessionStore.appendMessage(request.sessionId, userMessage);
-
   try {
+    const controller = deps.hub.create(runId);
+    socketRuns.add(runId);
+
+    const userMessage: Extract<AgentMessage, { role: "user" }> = {
+      role: "user",
+      content: request.content,
+    };
+    const prior = await deps.sessionStore.getMessages(request.sessionId);
+    await deps.sessionStore.appendMessage(request.sessionId, userMessage);
+
     const runtime = assembleRuntime({
       config: deps.getConfig(),
       workspaceRoot: deps.workspaceRoot,
@@ -136,13 +136,20 @@ async function startRun(
       ? [{ role: "system", content: runtime.systemPrompt }, ...prior]
       : prior;
 
+    let pendingEnd: Extract<RunnerEvent, { type: "run_end" }> | undefined;
     const result = await runtime.runner.run({
       messages: history,
       userMessage,
       model: runtime.model,
       tools: runtime.tools,
       permissions: runtime.permissions,
-      onEvent: (event: RunnerEvent) => send(socket, toRunEvent(event)),
+      onEvent: (event: RunnerEvent) => {
+        if (event.type === "run_end") {
+          pendingEnd = event;
+          return;
+        }
+        send(socket, toRunEvent(event));
+      },
       signal: controller.signal,
       sessionId: request.sessionId,
       runId,
@@ -150,8 +157,13 @@ async function startRun(
     });
 
     const skip = (runtime.systemPrompt ? 1 : 0) + prior.length + 1;
-    for (const message of result.messages.slice(skip)) {
-      await deps.sessionStore.appendMessage(request.sessionId, message);
+    await deps.sessionStore.appendMessagesBatch(
+      request.sessionId,
+      result.messages.slice(skip),
+    );
+
+    if (pendingEnd) {
+      send(socket, toRunEvent(pendingEnd));
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
