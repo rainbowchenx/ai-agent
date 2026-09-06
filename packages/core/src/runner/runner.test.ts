@@ -287,4 +287,185 @@ describe("Runner", () => {
     expect(end?.type).toBe("run_end");
     expect(end?.type === "run_end" && end.reason).toBe("completed");
   });
+
+  it("aborts while waiting for ask_all permission without executing", async () => {
+    const events: RunnerEvent[] = [];
+    const ac = new AbortController();
+    let executed = 0;
+    const model: ModelPort = {
+      id: "mock",
+      async *stream() {
+        yield {
+          type: "tool_call",
+          id: "call_perm_abort",
+          name: "echo",
+          arguments: { text: "secret" },
+        };
+      },
+    };
+
+    const tools = new ToolRegistry();
+    tools.register(
+      {
+        name: "echo",
+        description: "Echo the text argument",
+        parameters: {
+          type: "object",
+          properties: { text: { type: "string" } },
+        },
+      },
+      async (args) => {
+        executed += 1;
+        return String(args.text ?? "");
+      },
+    );
+
+    const runner = new Runner({ maxTurns: 4 });
+    const result = await runner.run({
+      messages: [],
+      userMessage: { role: "user", content: "echo secret" },
+      model,
+      tools,
+      permissions: { mode: "ask_all", allowlist: [] },
+      signal: ac.signal,
+      onPermissionRequest: () => new Promise(() => {
+        /* hang until abort wins the race */
+      }),
+      onEvent: (e) => {
+        events.push(e);
+        if (e.type === "permission_request") {
+          queueMicrotask(() => ac.abort());
+        }
+      },
+    });
+
+    expect(executed).toBe(0);
+    expect(eventTypes(events)).toContain("permission_request");
+    expect(eventTypes(events)).not.toContain("tool_start");
+    expect(result.reason).toBe("stopped");
+    const end = lastEvent(events);
+    expect(end?.type === "run_end" && end.reason).toBe("stopped");
+
+    const toolMsg = result.messages.find((m) => m.role === "tool");
+    expect(toolMsg?.role === "tool" && toolMsg.toolCallId).toBe("call_perm_abort");
+    expect(toolMsg?.role === "tool" && toolMsg.content).toMatch(/cancelled/i);
+  });
+
+  it("pairs leftover tool_calls with tool messages when maxToolCalls is hit", async () => {
+    let turn = 0;
+    let secondTurnToolIds: string[] = [];
+    const model: ModelPort = {
+      id: "mock",
+      async *stream({ messages }) {
+        turn += 1;
+        if (turn === 1) {
+          yield {
+            type: "tool_call",
+            id: "call_a",
+            name: "echo",
+            arguments: { text: "a" },
+          };
+          yield {
+            type: "tool_call",
+            id: "call_b",
+            name: "echo",
+            arguments: { text: "b" },
+          };
+          return;
+        }
+        secondTurnToolIds = messages
+          .filter((m) => m.role === "tool")
+          .map((m) => (m.role === "tool" ? m.toolCallId : ""));
+        yield { type: "text_delta", text: "done" };
+      },
+    };
+
+    const tools = new ToolRegistry();
+    tools.register(
+      {
+        name: "echo",
+        description: "Echo the text argument",
+        parameters: {
+          type: "object",
+          properties: { text: { type: "string" } },
+        },
+      },
+      async (args) => String(args.text ?? ""),
+    );
+
+    const runner = new Runner({ maxTurns: 4, maxToolCalls: 1 });
+    const result = await runner.run({
+      messages: [],
+      userMessage: { role: "user", content: "two tools" },
+      model,
+      tools,
+      permissions: { mode: "default", allowlist: [] },
+      onEvent: () => undefined,
+    });
+
+    expect(secondTurnToolIds.sort()).toEqual(["call_a", "call_b"]);
+    const toolMsgs = result.messages.filter((m) => m.role === "tool");
+    expect(toolMsgs.map((m) => (m.role === "tool" ? m.toolCallId : ""))).toEqual([
+      "call_a",
+      "call_b",
+    ]);
+    const skipped = toolMsgs.find((m) => m.role === "tool" && m.toolCallId === "call_b");
+    expect(skipped?.role === "tool" && skipped.content).toMatch(/limit exceeded/i);
+    expect(result.reason).toBe("completed");
+  });
+
+  it("ends stopped when tool execute throws AbortError", async () => {
+    const events: RunnerEvent[] = [];
+    let modelCalls = 0;
+    const model: ModelPort = {
+      id: "mock",
+      async *stream() {
+        modelCalls += 1;
+        if (modelCalls === 1) {
+          yield {
+            type: "tool_call",
+            id: "call_abort_tool",
+            name: "abort_me",
+            arguments: {},
+          };
+          return;
+        }
+        yield { type: "text_delta", text: "should not happen" };
+      },
+    };
+
+    const tools = new ToolRegistry();
+    tools.register(
+      {
+        name: "abort_me",
+        description: "Throws AbortError",
+        parameters: { type: "object" },
+      },
+      async () => {
+        const err = new Error("The operation was aborted");
+        err.name = "AbortError";
+        throw err;
+      },
+    );
+
+    const runner = new Runner({ maxTurns: 4 });
+    const result = await runner.run({
+      messages: [],
+      userMessage: { role: "user", content: "abort tool" },
+      model,
+      tools,
+      permissions: { mode: "default", allowlist: [] },
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(modelCalls).toBe(1);
+    expect(result.reason).toBe("stopped");
+    const end = lastEvent(events);
+    expect(end?.type === "run_end" && end.reason).toBe("stopped");
+
+    const toolMsg = result.messages.find((m) => m.role === "tool");
+    expect(toolMsg?.role === "tool" && toolMsg.toolCallId).toBe("call_abort_tool");
+    expect(toolMsg?.role === "tool" && toolMsg.content).toMatch(/cancelled/i);
+    expect(toolMsg?.role === "tool" && toolMsg.content).not.toMatch(/aborted/i);
+  });
 });

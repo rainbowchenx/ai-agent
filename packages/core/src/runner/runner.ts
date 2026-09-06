@@ -9,6 +9,9 @@ import type {
   RunnerRunResult,
 } from "./types.js";
 
+const TOOL_CANCELLED = "Tool call cancelled";
+const TOOL_LIMIT_EXCEEDED = "Tool call limit exceeded";
+
 /**
  * ReAct loop: model stream → optional tools → model again, until text or limits.
  *
@@ -50,18 +53,26 @@ export class Runner {
     try {
       for (let turn = 0; turn < this.maxTurns; turn += 1) {
         if (input.signal?.aborted) {
+          this.cancelUnpairedFromLastAssistant(messages, runId, emit);
           return this.end(emit, messages, runId, "stopped");
         }
 
-        const { text, toolCalls } = await this.collectModelTurn(
+        const { text, toolCalls, aborted } = await this.collectModelTurn(
           input,
           messages,
           runId,
           emit,
         );
 
-        if (input.signal?.aborted) {
+        if (aborted) {
           this.appendAssistant(messages, text, toolCalls);
+          this.writeSyntheticToolResults(
+            messages,
+            toolCalls,
+            runId,
+            emit,
+            TOOL_CANCELLED,
+          );
           return this.end(emit, messages, runId, "stopped");
         }
 
@@ -74,19 +85,51 @@ export class Runner {
 
         for (const call of toolCalls) {
           if (input.signal?.aborted) {
+            this.writeSyntheticToolResults(
+              messages,
+              toolCalls,
+              runId,
+              emit,
+              TOOL_CANCELLED,
+            );
             return this.end(emit, messages, runId, "stopped");
           }
           if (toolCallsThisRun >= this.maxToolCalls) {
+            this.writeSyntheticToolResults(
+              messages,
+              toolCalls,
+              runId,
+              emit,
+              TOOL_LIMIT_EXCEEDED,
+            );
             break;
           }
           toolCallsThisRun += 1;
-          await this.executeToolCall(input, messages, runId, sessionId, call, emit);
+          const status = await this.executeToolCall(
+            input,
+            messages,
+            runId,
+            sessionId,
+            call,
+            emit,
+          );
+          if (status === "aborted") {
+            this.writeSyntheticToolResults(
+              messages,
+              toolCalls,
+              runId,
+              emit,
+              TOOL_CANCELLED,
+            );
+            return this.end(emit, messages, runId, "stopped");
+          }
         }
       }
 
       return this.end(emit, messages, runId, "completed");
     } catch (err) {
-      if (isAbortError(err)) {
+      if (isAbortError(err) || input.signal?.aborted) {
+        this.cancelUnpairedFromLastAssistant(messages, runId, emit);
         return this.end(emit, messages, runId, "stopped");
       }
       const message = errorMessage(err);
@@ -122,26 +165,33 @@ export class Runner {
     messages: AgentMessage[],
     runId: string,
     emit: (event: RunnerEvent) => void,
-  ): Promise<{ text: string; toolCalls: ToolCall[] }> {
+  ): Promise<{ text: string; toolCalls: ToolCall[]; aborted: boolean }> {
     let text = "";
     const toolCalls: ToolCall[] = [];
 
-    for await (const event of input.model.stream({
-      messages,
-      tools: input.tools.list(),
-      signal: input.signal,
-    })) {
-      if (input.signal?.aborted) {
-        break;
+    try {
+      for await (const event of input.model.stream({
+        messages,
+        tools: input.tools.list(),
+        signal: input.signal,
+      })) {
+        if (input.signal?.aborted) {
+          return { text, toolCalls, aborted: true };
+        }
+        this.applyStreamEvent(event, runId, emit, (chunk) => {
+          text += chunk;
+        }, (call) => {
+          toolCalls.push(call);
+        });
       }
-      this.applyStreamEvent(event, runId, emit, (chunk) => {
-        text += chunk;
-      }, (call) => {
-        toolCalls.push(call);
-      });
+    } catch (err) {
+      if (isAbortError(err)) {
+        return { text, toolCalls, aborted: true };
+      }
+      throw err;
     }
 
-    return { text, toolCalls };
+    return { text, toolCalls, aborted: Boolean(input.signal?.aborted) };
   }
 
   private applyStreamEvent(
@@ -172,12 +222,13 @@ export class Runner {
     sessionId: string,
     call: ToolCall,
     emit: (event: RunnerEvent) => void,
-  ): Promise<void> {
+  ): Promise<"ok" | "aborted"> {
     const decision = await evaluatePermission({
       policy: input.permissions,
       toolName: call.name,
       arguments: call.arguments,
       onPermissionRequest: input.onPermissionRequest,
+      signal: input.signal,
       onRequest: (request) => {
         emit({
           type: "permission_request",
@@ -188,6 +239,10 @@ export class Runner {
         });
       },
     });
+
+    if (decision.aborted || input.signal?.aborted) {
+      return "aborted";
+    }
 
     if (!decision.allow) {
       const result = `Permission denied for tool: ${call.name}`;
@@ -200,7 +255,11 @@ export class Runner {
         isError: true,
       });
       messages.push({ role: "tool", toolCallId: call.id, content: result });
-      return;
+      return "ok";
+    }
+
+    if (input.signal?.aborted) {
+      return "aborted";
     }
 
     emit({
@@ -220,6 +279,9 @@ export class Runner {
         signal: input.signal,
       });
     } catch (err) {
+      if (isAbortError(err) || input.signal?.aborted) {
+        return "aborted";
+      }
       isError = true;
       result = errorMessage(err);
     }
@@ -233,6 +295,57 @@ export class Runner {
       ...(isError ? { isError: true } : {}),
     });
     messages.push({ role: "tool", toolCallId: call.id, content: result });
+    return "ok";
+  }
+
+  private cancelUnpairedFromLastAssistant(
+    messages: AgentMessage[],
+    runId: string,
+    emit: (event: RunnerEvent) => void,
+  ): void {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const msg = messages[i];
+      if (msg?.role === "assistant") {
+        this.writeSyntheticToolResults(
+          messages,
+          msg.toolCalls ?? [],
+          runId,
+          emit,
+          TOOL_CANCELLED,
+        );
+        return;
+      }
+    }
+  }
+
+  private writeSyntheticToolResults(
+    messages: AgentMessage[],
+    toolCalls: ToolCall[],
+    runId: string,
+    emit: (event: RunnerEvent) => void,
+    result: string,
+  ): void {
+    const answered = new Set<string>();
+    for (const msg of messages) {
+      if (msg.role === "tool") {
+        answered.add(msg.toolCallId);
+      }
+    }
+    for (const call of toolCalls) {
+      if (answered.has(call.id)) {
+        continue;
+      }
+      emit({
+        type: "tool_end",
+        runId,
+        toolCallId: call.id,
+        name: call.name,
+        result,
+        isError: true,
+      });
+      messages.push({ role: "tool", toolCallId: call.id, content: result });
+      answered.add(call.id);
+    }
   }
 }
 
