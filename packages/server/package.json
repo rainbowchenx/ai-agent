@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@agent2026/core": "workspace:*",
+    "@agent2026/providers": "workspace:*",
     "@agent2026/shared": "workspace:*",
+    "@fastify/websocket": "^11.3.0",
     "better-sqlite3": "^13.0.3",
     "fastify": "^5.12.3",
     "yaml": "^2.9.0"

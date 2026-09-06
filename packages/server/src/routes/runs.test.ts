@@ -1,0 +1,214 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import type { ModelPort } from "@agent2026/core";
+import type {
+  CreateSessionResponse,
+  GetSessionResponse,
+  RunEvent,
+  StopRunResponse,
+  WsClientMessage,
+} from "@agent2026/shared";
+import { createApp } from "../app.js";
+
+function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      const err = new Error("aborted");
+      err.name = "AbortError";
+      reject(err);
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        const err = new Error("aborted");
+        err.name = "AbortError";
+        reject(err);
+      },
+      { once: true },
+    );
+  });
+}
+
+async function collectUntilEnd(
+  ws: { on: (event: string, listener: (data: Buffer) => void) => void },
+  timeoutMs = 3000,
+): Promise<RunEvent[]> {
+  const events: RunEvent[] = [];
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`timed out waiting for run_end: ${JSON.stringify(events)}`)),
+      timeoutMs,
+    );
+    ws.on("message", (data) => {
+      const event = JSON.parse(data.toString()) as RunEvent;
+      events.push(event);
+      if (event.type === "run_end") {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
+  });
+  return events;
+}
+
+describe("WebSocket run + stop", () => {
+  let dir = "";
+  let app: Awaited<ReturnType<typeof createApp>> | undefined;
+
+  afterEach(async () => {
+    if (app) {
+      await app.close();
+      app = undefined;
+    }
+    if (dir) {
+      await rm(dir, { recursive: true, force: true });
+      dir = "";
+    }
+  });
+
+  async function appWithModel(model: ModelPort) {
+    dir = await mkdtemp(join(tmpdir(), "agent2026-runs-"));
+    app = await createApp({
+      configPath: join(dir, "config.yaml"),
+      dbPath: join(dir, "data.sqlite"),
+      workspaceRoot: dir,
+      model,
+    });
+    await app.ready();
+    return app;
+  }
+
+  it("streams mock model deltas over /ws and persists user + assistant", async () => {
+    const model: ModelPort = {
+      id: "mock",
+      async *stream() {
+        yield { type: "text_delta", text: "hel" };
+        yield { type: "text_delta", text: "lo" };
+      },
+    };
+    const app = await appWithModel(model);
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/sessions",
+      payload: { title: "ws run" },
+    });
+    const { id: sessionId } = created.json<CreateSessionResponse>();
+
+    const ws = await app.injectWS("/ws");
+    const pending = collectUntilEnd(ws);
+    const request: WsClientMessage = {
+      type: "run",
+      sessionId,
+      content: "say hello",
+    };
+    ws.send(JSON.stringify(request));
+    const events = await pending;
+    ws.terminate();
+
+    expect(events[0]).toMatchObject({
+      type: "run_start",
+      sessionId,
+    });
+    expect(events[0]?.type === "run_start" && events[0].runId).toEqual(
+      expect.any(String),
+    );
+    expect(events[0]?.type === "run_start" && events[0].traceId).toEqual(
+      expect.any(String),
+    );
+    expect(events.filter((e) => e.type === "message_delta")).toEqual([
+      { type: "message_delta", runId: events[0] && "runId" in events[0] ? events[0].runId : "", delta: "hel" },
+      { type: "message_delta", runId: events[0] && "runId" in events[0] ? events[0].runId : "", delta: "lo" },
+    ]);
+    expect(events.at(-1)).toMatchObject({ type: "run_end", reason: "completed" });
+
+    const session = await app.inject({ method: "GET", url: `/sessions/${sessionId}` });
+    const body = session.json<GetSessionResponse>();
+    expect(body.messages.map((m) => ({ role: m.role, content: m.content }))).toEqual([
+      { role: "user", content: "say hello" },
+      { role: "assistant", content: "hello" },
+    ]);
+  });
+
+  it("POST /runs/:runId/stop aborts the in-flight mock stream", async () => {
+    const model: ModelPort = {
+      id: "mock-slow",
+      async *stream({ signal }) {
+        yield { type: "text_delta", text: "tick" };
+        await abortableDelay(10_000, signal);
+        yield { type: "text_delta", text: "should-not-appear" };
+      },
+    };
+    const app = await appWithModel(model);
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/sessions",
+      payload: { title: "stop me" },
+    });
+    const { id: sessionId } = created.json<CreateSessionResponse>();
+
+    const ws = await app.injectWS("/ws");
+    const events: RunEvent[] = [];
+    const started = new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("no run_start")), 3000);
+      ws.on("message", (data) => {
+        const event = JSON.parse(data.toString()) as RunEvent;
+        events.push(event);
+        if (event.type === "run_start") {
+          clearTimeout(timer);
+          resolve(event.runId);
+        }
+      });
+    });
+    const ended = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`no run_end: ${JSON.stringify(events)}`)),
+        3000,
+      );
+      ws.on("message", (data) => {
+        const event = JSON.parse(data.toString()) as RunEvent;
+        if (event.type === "run_end") {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
+    });
+
+    ws.send(
+      JSON.stringify({
+        type: "run",
+        sessionId,
+        content: "please hang",
+      } satisfies WsClientMessage),
+    );
+
+    const runId = await started;
+    const stopped = await app.inject({
+      method: "POST",
+      url: `/runs/${runId}/stop`,
+    });
+    expect(stopped.statusCode).toBe(200);
+    expect(stopped.json<StopRunResponse>()).toEqual({ ok: true });
+
+    await ended;
+    ws.terminate();
+
+    expect(events.some((e) => e.type === "message_delta" && e.delta === "tick")).toBe(
+      true,
+    );
+    expect(
+      events.some((e) => e.type === "message_delta" && e.delta === "should-not-appear"),
+    ).toBe(false);
+    expect(events.at(-1)).toMatchObject({
+      type: "run_end",
+      runId,
+      reason: "stopped",
+    });
+  });
+});
