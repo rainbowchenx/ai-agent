@@ -12,6 +12,12 @@ type SessionRow = {
   updated_at: string;
 };
 
+export type StoredMessageRow = {
+  id: string;
+  message: AgentMessage;
+  createdAt: string;
+};
+
 function toSessionRecord(row: SessionRow): SessionRecord {
   return {
     id: row.id,
@@ -79,11 +85,27 @@ export class SqliteSessionStore implements SessionStore {
   }
 
   async getMessages(sessionId: string): Promise<AgentMessage[]> {
+    const rows = await this.getMessageRows(sessionId);
+    return rows.map((row) => row.message);
+  }
+
+  async getMessageRows(sessionId: string): Promise<StoredMessageRow[]> {
     const rows = this.db
       .prepare(
-        `SELECT payload FROM messages WHERE session_id = ? ORDER BY id ASC`,
+        `SELECT id, payload, created_at
+         FROM messages
+         WHERE session_id = ?
+         ORDER BY id ASC`,
       )
-      .all(sessionId) as Array<{ payload: string }>;
-    return rows.map((row) => JSON.parse(row.payload) as AgentMessage);
+      .all(sessionId) as Array<{
+      id: number;
+      payload: string;
+      created_at: string;
+    }>;
+    return rows.map((row) => ({
+      id: String(row.id),
+      message: JSON.parse(row.payload) as AgentMessage,
+      createdAt: row.created_at,
+    }));
   }
 }
