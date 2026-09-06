@@ -30,6 +30,18 @@ export {
 } from "./runner/types.js";
 export { ToolRegistry, type ToolHandler } from "./tools/registry.js";
 export {
+  assertHttpUrl,
+  createBuiltinToolPort,
+  createHttpFetchHandler,
+  createReadFileHandler,
+  HTTP_FETCH_DEFINITION,
+  READ_FILE_DEFINITION,
+  resolveWorkspacePath,
+  type BuiltinToolName,
+  type BuiltinToolPortOptions,
+  type HttpFetchHandlerOptions,
+} from "./tools/builtin/index.js";
+export {
   evaluatePermission,
   type PermissionDecision,
   type PermissionMode,
