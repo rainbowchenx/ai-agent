@@ -13,3 +13,5 @@ coverage/
 out/
 release/
 .vite/
+
+.superpowers/

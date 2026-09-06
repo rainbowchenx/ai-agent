@@ -1,4 +1,4 @@
-# Agent Runtime P0 MVP Implementation Plan
+﻿# Agent Runtime P0 MVP Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -141,7 +141,7 @@ git commit -m "chore: init pnpm monorepo workspace skeleton"
 
 ### 断点 Checkpoint — Task 1
 
-- [ ] `pnpm -r list` 能看到 `@agent2026/*` 包名  
+- [ ] `pnpm -r list --depth -1` 能看到 `@agent2026/*` 包名  
 - [ ] 自问：为什么 Server 不能进 `apps/desktop`？用一句话写进 `P0-T01.md`  
 - [ ] 自问：`packages/mcp` 现在为什么只有 README？  
 
