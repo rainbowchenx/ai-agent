@@ -23,7 +23,15 @@ importers:
         specifier: ^3.2.7
         version: 3.2.7(lightningcss@1.33.0)(yaml@2.9.0)
 
-  packages/providers: {}
+  packages/providers:
+    dependencies:
+      '@agent2026/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(lightningcss@1.33.0)(yaml@2.9.0)
 
   packages/server: {}
 
