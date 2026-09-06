@@ -13,6 +13,7 @@ import {
   applyRunEvent,
   emptyProjection,
   projectionFromMessages,
+  shouldApplyRunEvent,
   type RunProjection,
 } from "@/lib/apply-run-event";
 import { RunSocket } from "@/lib/ws-client";
@@ -53,6 +54,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       socket = new RunSocket(
         () => get().baseUrl,
         (event) => {
+          const { selectedSessionId, run } = get();
+          if (!shouldApplyRunEvent(run, event, selectedSessionId)) {
+            return;
+          }
           set((state) => ({ run: applyRunEvent(state.run, event) }));
           if (event.type === "run_end") {
             void get().refreshSessions();
@@ -88,24 +93,38 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   createAndSelect: async (title) => {
-    const { baseUrl } = get();
-    const created = await createSession(baseUrl, title);
-    await get().refreshSessions();
-    await get().selectSession(created.id);
+    try {
+      const { baseUrl } = get();
+      const created = await createSession(baseUrl, title);
+      await get().refreshSessions();
+      await get().selectSession(created.id);
+      set({ error: null });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   },
 
   selectSession: async (id) => {
-    const { baseUrl } = get();
-    const session = await getSession(baseUrl, id);
-    set({
-      selectedSessionId: id,
-      run: projectionFromMessages(id, session.messages),
-    });
+    try {
+      const { baseUrl } = get();
+      const session = await getSession(baseUrl, id);
+      set({
+        selectedSessionId: id,
+        run: projectionFromMessages(id, session.messages),
+        error: null,
+      });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   },
 
   sendMessage: (content) => {
     const trimmed = content.trim();
-    const { selectedSessionId } = get();
+    const { selectedSessionId, run: previousRun } = get();
     if (!trimmed || !selectedSessionId || !socket) {
       return;
     }
@@ -113,17 +132,34 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       run: {
         ...appendUserMessage(state.run, trimmed),
         status: "running",
+        runId: null,
+        traceId: null,
       },
+      error: null,
     }));
-    socket.sendRun(selectedSessionId, trimmed);
+    try {
+      socket.sendRun(selectedSessionId, trimmed);
+    } catch (err) {
+      set({
+        run: previousRun,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   },
 
   stopCurrentRun: async () => {
     const { baseUrl, run } = get();
-    if (!run.runId) {
+    if (run.status !== "running" || !run.runId) {
       return;
     }
-    await stopRun(baseUrl, run.runId);
+    try {
+      await stopRun(baseUrl, run.runId);
+      set({ error: null });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   },
 
   injectDemoTool: () => {

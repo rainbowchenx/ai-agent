@@ -48,6 +48,26 @@ export function formatTraceLine(event: RunEvent): string {
   return JSON.stringify(event);
 }
 
+export function shouldApplyRunEvent(
+  projection: RunProjection,
+  event: RunEvent,
+  selectedSessionId: string | null,
+): boolean {
+  if (!selectedSessionId) {
+    return false;
+  }
+  if (event.type === "run_start") {
+    return event.sessionId === selectedSessionId;
+  }
+  if (projection.status !== "running") {
+    return false;
+  }
+  if (projection.sessionId !== selectedSessionId) {
+    return false;
+  }
+  return projection.runId !== null && event.runId === projection.runId;
+}
+
 export function applyRunEvent(
   state: RunProjection,
   event: RunEvent,

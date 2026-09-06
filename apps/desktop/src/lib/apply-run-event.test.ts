@@ -5,6 +5,7 @@ import {
   emptyProjection,
   messagesToChatItems,
   appendUserMessage,
+  shouldApplyRunEvent,
 } from "./apply-run-event.js";
 
 describe("applyRunEvent", () => {
@@ -95,6 +96,60 @@ describe("messagesToChatItems", () => {
       },
       { kind: "assistant", id: "m4", content: "done", streaming: false },
     ]);
+  });
+});
+
+describe("shouldApplyRunEvent", () => {
+  it("accepts run_start only for the selected session", () => {
+    const event = {
+      type: "run_start" as const,
+      runId: "r1",
+      sessionId: "s1",
+      traceId: "t1",
+    };
+    expect(shouldApplyRunEvent(emptyProjection(), event, "s1")).toBe(true);
+    expect(shouldApplyRunEvent(emptyProjection(), event, "s2")).toBe(false);
+    expect(shouldApplyRunEvent(emptyProjection(), event, null)).toBe(false);
+  });
+
+  it("ignores deltas for other runs or after run ends", () => {
+    let projection = emptyProjection();
+    projection = applyRunEvent(projection, {
+      type: "run_start",
+      runId: "r1",
+      sessionId: "s1",
+      traceId: "t1",
+    });
+    const delta = { type: "message_delta" as const, runId: "r1", delta: "x" };
+    expect(shouldApplyRunEvent(projection, delta, "s1")).toBe(true);
+    expect(
+      shouldApplyRunEvent(projection, { ...delta, runId: "r2" }, "s1"),
+    ).toBe(false);
+    expect(shouldApplyRunEvent(projection, delta, "s2")).toBe(false);
+
+    projection = applyRunEvent(projection, {
+      type: "run_end",
+      runId: "r1",
+      reason: "completed",
+    });
+    expect(shouldApplyRunEvent(projection, delta, "s1")).toBe(false);
+  });
+
+  it("ignores events while waiting for run_start after send", () => {
+    const projection = {
+      ...appendUserMessage(emptyProjection(), "hi", "u1"),
+      sessionId: "s1",
+      status: "running" as const,
+      runId: null,
+      traceId: null,
+    };
+    expect(
+      shouldApplyRunEvent(projection, {
+        type: "message_delta",
+        runId: "r-old",
+        delta: "x",
+      }, "s1"),
+    ).toBe(false);
   });
 });
 
