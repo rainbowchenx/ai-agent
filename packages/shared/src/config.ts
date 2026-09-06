@@ -78,13 +78,26 @@ export const appConfigSchema = z
       });
     }
 
-    for (const serverName of config.agents.default.tools.mcpServers) {
-      if (config.mcpServers && !config.mcpServers[serverName]) {
+    const referencedMcpServers = config.agents.default.tools.mcpServers;
+
+    if (referencedMcpServers.length > 0) {
+      if (!config.mcpServers) {
         ctx.addIssue({
           code: "custom",
-          message: `agents.default.tools.mcpServers references unknown mcpServers entry "${serverName}"`,
-          path: ["agents", "default", "tools", "mcpServers"],
+          message:
+            "agents.default.tools.mcpServers references MCP servers but top-level mcpServers block is missing",
+          path: ["mcpServers"],
         });
+      } else {
+        for (const serverName of referencedMcpServers) {
+          if (!config.mcpServers[serverName]) {
+            ctx.addIssue({
+              code: "custom",
+              message: `agents.default.tools.mcpServers references unknown mcpServers entry "${serverName}"`,
+              path: ["agents", "default", "tools", "mcpServers"],
+            });
+          }
+        }
       }
     }
   });
