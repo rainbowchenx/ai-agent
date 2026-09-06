@@ -2,5 +2,20 @@
   "name": "@agent2026/core",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./messages": "./src/types/messages.ts",
+    "./ports/model-port": "./src/ports/model-port.ts",
+    "./ports/tool-port": "./src/ports/tool-port.ts",
+    "./ports/session-store": "./src/ports/session-store.ts",
+    "./ports/trace-port": "./src/ports/trace-port.ts",
+    "./ports/agent-peer-port": "./src/ports/agent-peer-port.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
+  }
 }
