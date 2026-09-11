@@ -37,27 +37,40 @@ export function createOpenAICompatibleModel(
     id: opts.id,
     async *stream(input) {
       const url = joinUrl(opts.baseUrl, "chat/completions");
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${opts.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: opts.model,
-          stream: true,
-          messages: input.messages.map(toOpenAIMessage),
-          ...(input.tools.length > 0
-            ? { tools: input.tools.map(toOpenAITool) }
-            : {}),
-        }),
-        signal: input.signal,
-      });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${opts.apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: opts.model,
+            stream: true,
+            messages: input.messages.map(toOpenAIMessage),
+            ...(input.tools.length > 0
+              ? { tools: input.tools.map(toOpenAITool) }
+              : {}),
+          }),
+          signal: input.signal,
+        });
+      } catch (err) {
+        const cause =
+          err instanceof Error
+            ? err.message
+            : typeof err === "string"
+              ? err
+              : "unknown network error";
+        throw new Error(
+          `OpenAI-compatible fetch failed for ${url} (model=${opts.model}): ${cause}`,
+        );
+      }
 
       if (!response.ok) {
         const text = await response.text().catch(() => "");
         throw new Error(
-          `OpenAI-compatible request failed: ${response.status} ${response.statusText}${text ? ` — ${text}` : ""}`,
+          `OpenAI-compatible request failed: ${response.status} ${response.statusText}${text ? ` — ${text}` : ""} (${url}, model=${opts.model})`,
         );
       }
       if (!response.body) {
