@@ -1,7 +1,7 @@
 # Agent Runtime + Electron 工作台 — 设计规格
 
 **日期：** 2026-09-05  
-**状态：** 已确认；**P0 已在分支 `feat/p0-mvp` 实现**（验收见 `docs/learning/P0-REVIEW.md`）。自动化测试 67/67 通过；Electron 全链路 + 真实 API Key 对话待本机手工冒烟。P1 起：第二 Provider、配置 UI、Trace 面板。  
+**状态：** 已确认；**P0 已在分支 `feat/p0-mvp` 实现**（验收见 `docs/learning/P0-REVIEW.md`）。自动化测试通过；Electron 全链路 + 真实 API Key 对话待本机手工冒烟。长期记忆候选：**OpenViking via MCP**（§6.5）。P1 起：第二 Provider、配置 UI、Trace 面板。  
 **定位：** 可插拔 Agent Runtime / 框架；桌面端为第一成品形态
 
 ---
