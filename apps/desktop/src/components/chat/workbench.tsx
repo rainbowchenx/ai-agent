@@ -57,7 +57,10 @@ export function Workbench() {
         </Sheet>
       </header>
       {error ? (
-        <p className="border-b px-3 py-2 text-sm text-destructive-foreground">
+        <p
+          className="border-b border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          data-app-error
+        >
           {error}
         </p>
       ) : null}

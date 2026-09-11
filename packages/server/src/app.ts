@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { ModelPort } from "@agent2026/core";
@@ -43,6 +44,14 @@ export async function createApp(
   const app = Fastify({ logger: false });
   app.addHook("onClose", async () => {
     db.close();
+  });
+
+  // Electron renderer (vite) is http://localhost:5173 while the API is
+  // http://127.0.0.1:8787 — browsers treat that as cross-origin.
+  await app.register(cors, {
+    origin: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   });
 
   await app.register(websocket);

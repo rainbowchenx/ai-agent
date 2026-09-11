@@ -46,6 +46,24 @@ describe("Fastify app", () => {
     expect(body.version.length).toBeGreaterThan(0);
   });
 
+  it("CORS allows Electron vite origin", async () => {
+    const app = await freshApp();
+    const res = await app.inject({
+      method: "OPTIONS",
+      url: "/sessions",
+      headers: {
+        origin: "http://localhost:5173",
+        "access-control-request-method": "POST",
+      },
+    });
+    await app.close();
+
+    expect(res.statusCode).toBe(204);
+    expect(res.headers["access-control-allow-origin"]).toBe(
+      "http://localhost:5173",
+    );
+  });
+
   it("writes defaultAppConfig when config.yaml is missing", async () => {
     const app = await freshApp();
     const res = await app.inject({ method: "GET", url: "/config" });

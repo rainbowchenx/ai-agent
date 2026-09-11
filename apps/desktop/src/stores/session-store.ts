@@ -28,7 +28,7 @@ type SessionStore = {
   error: string | null;
   init: () => Promise<void>;
   refreshSessions: () => Promise<void>;
-  createAndSelect: (title?: string) => Promise<void>;
+  createAndSelect: (title?: string) => Promise<boolean>;
   selectSession: (id: string) => Promise<void>;
   sendMessage: (content: string) => void;
   stopCurrentRun: () => Promise<void>;
@@ -95,14 +95,19 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   createAndSelect: async (title) => {
     try {
       const { baseUrl } = get();
+      if (!baseUrl) {
+        throw new Error("Server base URL 未就绪，请打开「设置」查看 health");
+      }
       const created = await createSession(baseUrl, title);
       await get().refreshSessions();
       await get().selectSession(created.id);
       set({ error: null });
+      return true;
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : String(err),
       });
+      return false;
     }
   },
 

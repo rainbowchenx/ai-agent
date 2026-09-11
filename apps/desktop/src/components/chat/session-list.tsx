@@ -48,10 +48,15 @@ export function SessionList() {
             <DialogFooter>
               <Button
                 onClick={() => {
-                  void createAndSelect(title.trim() || undefined).then(() => {
-                    setTitle("");
-                    setOpen(false);
-                  });
+                  void createAndSelect(title.trim() || undefined).then(
+                    (ok) => {
+                      if (!ok) {
+                        return;
+                      }
+                      setTitle("");
+                      setOpen(false);
+                    },
+                  );
                 }}
               >
                 创建

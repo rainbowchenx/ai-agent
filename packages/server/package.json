@@ -12,6 +12,7 @@
     "@agent2026/core": "workspace:*",
     "@agent2026/providers": "workspace:*",
     "@agent2026/shared": "workspace:*",
+    "@fastify/cors": "^11.3.0",
     "@fastify/websocket": "^11.3.0",
     "better-sqlite3": "^13.0.3",
     "fastify": "^5.12.3",
