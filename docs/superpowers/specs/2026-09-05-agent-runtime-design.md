@@ -39,6 +39,7 @@
 | 本机 Server | **Fastify**（HTTP + WebSocket 插件）；只做传输与装配，业务在 `core` |
 | 桌面 UI 组件库 | **shadcn/ui + Radix + Tailwind**；组件源码进仓，以可定制为主 |
 | 桌面 UI 实现方 | 视觉/页面由用户后续提供；工程侧先定栈与 API 契约，可用占位 UI |
+| 长期记忆 | **[OpenViking](https://github.com/volcengine/OpenViking)** 作为外部 Context DB；经 **MCP**（首选）接入，不嵌入 `core` |
 
 ---
 
@@ -46,7 +47,7 @@
 
 ### 3.1 原则
 
-Electron **只做 UI 与进程守护**；本机 **Agent Server** 持有会话与编排；`core` 跑自研 ReAct 循环，经 Port 调用模型与工具。MCP 与 Python Sidecar 均挂到统一 `ToolPort`。A2A 预留 `AgentPeerPort`。
+Electron **只做 UI 与进程守护**；本机 **Agent Server** 持有会话与编排；`core` 跑自研 ReAct 循环，经 Port 调用模型与工具。MCP 与 Python Sidecar 均挂到统一 `ToolPort`。A2A 预留 `AgentPeerPort`。长期记忆走可插拔 **Memory 后端**（默认候选：OpenViking），与 SQLite **短期 Session** 互补，不互相替代。
 
 ### 3.2 结构图
 
@@ -65,7 +66,7 @@ Electron **只做 UI 与进程守护**；本机 **Agent Server** 持有会话与
 │  packages/core                                           │
 │  Runner(ReAct) · Permissions · Hooks · Session · Trace   │
 │  Ports: ModelPort │ ToolPort │ SessionStore │ TracePort  │
-│         AgentPeerPort (stub)                             │
+│         MemoryPort (预留) │ AgentPeerPort (stub)          │
 └─────────────┬────────────────────────────┬───────────────┘
               │                            │
      ┌────────▼────────┐          ┌────────▼────────────┐
@@ -73,11 +74,15 @@ Electron **只做 UI 与进程守护**；本机 **Agent Server** 持有会话与
      │ providers       │          │ · builtin           │
      │                 │          │ · packages/mcp      │
      └─────────────────┘          │ · sidecar-python    │
+                                  │ · OpenViking (MCP)  │
                                   └─────────┬───────────┘
-                                            │ stdio JSON-RPC
-                                   ┌────────▼────────┐
-                                   │ Python Worker   │
-                                   └─────────────────┘
+                                            │ HTTP /mcp 或 stdio
+                         ┌──────────────────┼──────────────────┐
+                         │                  │                  │
+                ┌────────▼────────┐ ┌───────▼───────┐ ┌───────▼───────┐
+                │ Python Worker   │ │ OpenViking    │ │ 其他 MCP      │
+                │                 │ │ Context DB    │ │               │
+                └─────────────────┘ └───────────────┘ └───────────────┘
 ```
 
 ### 3.3 主路径（一次用户发送）
@@ -281,8 +286,42 @@ a2a:
 |------|------|------|
 | 全局配置 | `~/.agent2026/config.yaml` | 热加载；Zod 校验 |
 | 密钥 | OS keychain / env | 不进明文可提交配置 |
-| Sessions / Messages / Traces | `~/.agent2026/data.sqlite` | Server 写入 |
+| Sessions / Messages / Traces | `~/.agent2026/data.sqlite` | Server 写入；**短期会话**，非长期记忆 |
+| 长期记忆 / 上下文库 | OpenViking 自有数据目录（旁路进程） | 经 MCP 接入；与 SQLite Session 互补 |
 | 项目覆盖 | `<workspace>/.agent2026/config.yaml` | 可选 |
+
+---
+
+## 6.5 长期记忆：OpenViking（已定候选）
+
+### 6.5.1 定位
+
+- **OpenViking**（[volcengine/OpenViking](https://github.com/volcengine/OpenViking)）是 Agent **Context Database**：统一 memory / resources / skills（`viking://` 文件系统范式、分层加载）。
+- 在本项目中它是 **外部可替换后端**，不是 runtime 内核。
+- **SQLite SessionStore** = 当前对话与 run 轨迹；**OpenViking** = 跨会话长期记忆与可检索上下文。
+
+### 6.5.2 接入方式（优先级）
+
+1. **MCP 挂载（首选，P2 之后）**  
+   - OpenViking Server 默认 MCP：`http://localhost:1933/mcp`  
+   - 配置进 `mcpServers.openviking`；工具进入统一 `ToolRegistry`（命名空间如 `openviking__search`）  
+   - Agent 通过工具主动 `search` / `read` / `list` / `store` 等，Runner 无感
+2. **Hooks 增强（可选，P3 附近）**  
+   - `before_model`：按需 auto-recall 注入上下文  
+   - run / session 结束：`store` / `commit` 异步提炼长期记忆  
+   - 逻辑放在本项目 Hooks，避免 core 锁死 OpenViking SDK
+3. **预留 `MemoryPort`**  
+   - 接口形状后续定稿（recall / commit / forget）；第一版实现可为「MCP 工具门面」的薄适配  
+   - **禁止**让 `packages/core` 直接依赖 OpenViking Python 包
+
+### 6.5.3 约束与风险
+
+| 项 | 说明 |
+|----|------|
+| 许可证 | OpenViking 为 **AGPLv3**；自用/学习可，闭源商用分发前需合规评估 |
+| 进程 | 旁路 Python 服务，由 Server 或桌面壳做健康探测；失败时降级为「无长期记忆」，不崩 run |
+| 时机 | **P2 MCP 打通后再接**；不阻塞 P0/P1 |
+| 错误姿势 | 用 OpenViking 替换 SessionStore / Runner，或把记忆 OS 嵌进 core |
 
 ---
 
@@ -291,9 +330,10 @@ a2a:
 | 阶段 | 范围 | 学习重点 | 可演示结果 |
 |------|------|----------|------------|
 | **P0 MVP** | 自研 loop + OpenAI 兼容 Provider + 1～2 内置工具 + Server + Electron 占位对话/流式 | Agent 循环、流式、进程拆分 | 能聊并能调内置工具 |
-| **P1** | 第二 Provider + 配置 UI + Session 持久化 + Trace 面板 | Provider 适配、配置驱动 | 切换模型、回看历史 |
+| **P1** | 第二 Provider + 配置 UI + Trace 面板打磨 | Provider 适配、配置驱动 | 切换模型、回看历史与 Trace |
 | **P2** | MCP 多 server + 命名空间 + 权限 ask | MCP 与安全闸门 | 挂真实 MCP 干活 |
-| **P3** | Python Sidecar + Hooks | 跨语言工具协议 | TS/Python 工具共存 |
+| **P2.5** | 接入 OpenViking（MCP）+ 配置/文档；可选 `MemoryPort` 薄封装 | 长期记忆与短期 Session 分层 | Agent 可检索/写入跨会话记忆 |
+| **P3** | Python Sidecar + Hooks（含可选 auto-recall/commit） | 跨语言工具协议、记忆生命周期 | TS/Python 工具共存；记忆可自动沉淀 |
 | **P4** | `AgentPeerPort` stub + 文档/示例 | 扩展点设计 | 框架边界清晰 |
 
 ### 7.1 P0 成功标准
@@ -316,7 +356,7 @@ a2a:
 - **最小内核可扩展**：对齐 Pi 的扩展哲学，避免第一天插件宇宙。  
 - **壳与 Server 分离**：对齐 OpenCode，便于日后 CLI/其他客户端。  
 - **Sidecar**：JSON-RPC + stdio（与 MCP 传输同构），Supervisor 管生命周期。  
-- **Memory**：需要时作为可插拔模块，不把整个 runtime 锁成 memory OS（Letta 教训）。
+- **Memory**：可插拔模块，不把整个 runtime 锁成 memory OS（Letta 教训）；**OpenViking 经 MCP 旁路接入**（见 §6.5）。
 
 ---
 
@@ -329,11 +369,15 @@ a2a:
 | 用户 UI 后到导致返工 | `shared` 事件/DTO 先冻结；占位 UI 只依赖契约 |
 | MCP 子进程泄漏 | Server shutdown 钩子 + 进程树清理 |
 | 过度抽象 | 坚持方案 1；不为「万物 Adapter」重构 Port |
+| OpenViking AGPLv3 / 进程依赖 | 仅作可选 MCP 后端；文档标明许可证；不可用时降级无记忆 |
 
 ---
 
 ## 10. 下一步
 
 1. ~~用户确认本 spec。~~  
-2. 初始化 git 仓库并提交 docs（实现 Task 1 时完成）。  
-3. ~~writing-plans~~ → 执行 `docs/superpowers/plans/2026-09-05-agent-runtime-p0.md`（按 Task 断点推进）。
+2. ~~初始化 git 并提交 docs。~~  
+3. ~~P0 实现计划执行完毕~~（`feat/p0-mvp`）。  
+4. 合并 `feat/p0-mvp` → `main`。  
+5. P1：第二 Provider、配置 UI、Trace 面板。  
+6. P2 → P2.5：MCP 后接入 OpenViking 长期记忆。
