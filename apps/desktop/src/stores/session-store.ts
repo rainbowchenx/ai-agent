@@ -1,11 +1,13 @@
-import type { SessionSummary } from "@agent2026/shared";
+import type { AppConfig, SessionSummary } from "@agent2026/shared";
 import { create } from "zustand";
 import {
   createSession,
+  fetchConfig,
   fetchHealth,
   getServerBaseUrl,
   getSession,
   listSessions,
+  putConfig,
   stopRun,
 } from "@/lib/api";
 import {
@@ -21,6 +23,7 @@ import { RunSocket } from "@/lib/ws-client";
 type SessionStore = {
   baseUrl: string;
   health: string;
+  config: AppConfig | null;
   sessions: SessionSummary[];
   selectedSessionId: string | null;
   run: RunProjection;
@@ -28,6 +31,12 @@ type SessionStore = {
   error: string | null;
   init: () => Promise<void>;
   refreshSessions: () => Promise<void>;
+  loadConfig: () => Promise<void>;
+  saveProviderSettings: (input: {
+    apiBaseUrl: string;
+    model: string;
+    providerId?: string;
+  }) => Promise<void>;
   createAndSelect: (title?: string) => Promise<boolean>;
   selectSession: (id: string) => Promise<void>;
   sendMessage: (content: string) => void;
@@ -40,6 +49,7 @@ let socket: RunSocket | null = null;
 export const useSessionStore = create<SessionStore>((set, get) => ({
   baseUrl: "",
   health: "checking…",
+  config: null,
   sessions: [],
   selectedSessionId: null,
   run: emptyProjection(),
@@ -74,6 +84,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         });
       }
       await get().refreshSessions();
+      await get().loadConfig();
       set({ ready: true, error: null });
     } catch (err) {
       set({
@@ -90,6 +101,69 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }
     const sessions = await listSessions(baseUrl);
     set({ sessions });
+  },
+
+  loadConfig: async () => {
+    const { baseUrl } = get();
+    if (!baseUrl) {
+      return;
+    }
+    try {
+      const config = await fetchConfig(baseUrl);
+      set({ config, error: null });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  },
+
+  saveProviderSettings: async ({ apiBaseUrl, model, providerId }) => {
+    const { baseUrl, config } = get();
+    if (!baseUrl) {
+      throw new Error("Server base URL 未就绪");
+    }
+    const current = config ?? (await fetchConfig(baseUrl));
+    const id = providerId ?? current.providers.default ?? "openai";
+    const previous = current.providers.entries[id];
+    const apiKeyEnv =
+      previous && "apiKeyEnv" in previous
+        ? previous.apiKeyEnv
+        : "OPENAI_API_KEY";
+    const previousModels =
+      previous && "models" in previous && previous.models
+        ? previous.models
+        : [];
+    const models = previousModels.includes(model)
+      ? previousModels
+      : [...previousModels, model];
+
+    const next: AppConfig = {
+      ...current,
+      providers: {
+        ...current.providers,
+        default: id,
+        entries: {
+          ...current.providers.entries,
+          [id]: {
+            type: "openai_compatible",
+            baseUrl: apiBaseUrl,
+            apiKeyEnv,
+            models,
+          },
+        },
+      },
+      agents: {
+        ...current.agents,
+        default: {
+          ...current.agents.default,
+          model: `${id}/${model}`,
+        },
+      },
+    };
+
+    const saved = await putConfig(baseUrl, next);
+    set({ config: saved, error: null });
   },
 
   createAndSelect: async (title) => {

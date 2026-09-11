@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { useSessionStore } from "@/stores/session-store";
 import { ChatPane } from "./chat-pane";
+import { ProviderSettings } from "./provider-settings";
 import { RunDetails } from "./run-details";
 import { SessionList } from "./session-list";
 
@@ -16,6 +17,8 @@ export function Workbench() {
   const baseUrl = useSessionStore((s) => s.baseUrl);
   const health = useSessionStore((s) => s.health);
   const error = useSessionStore((s) => s.error);
+  const config = useSessionStore((s) => s.config);
+  const currentModel = config?.agents.default.model ?? "未加载";
 
   return (
     <div className="flex h-screen flex-col" data-workbench>
@@ -23,7 +26,10 @@ export function Workbench() {
         <div>
           <h1 className="text-sm font-semibold">agent2026 工作台</h1>
           <p className="text-xs text-muted-foreground">
-            占位 UI · 只投影 RunEvent
+            当前模型{" "}
+            <span className="font-mono" data-current-model>
+              {currentModel}
+            </span>
           </p>
         </div>
         <Sheet>
@@ -32,16 +38,16 @@ export function Workbench() {
               设置
             </Button>
           </SheetTrigger>
-          <SheetContent>
+          <SheetContent className="overflow-y-auto">
             <SheetHeader>
-              <SheetTitle>本机 Server</SheetTitle>
+              <SheetTitle>设置</SheetTitle>
               <SheetDescription>
-                Renderer 只走 HTTP/WS，不执行模型或工具。
+                配置本机 Server 与模型 Provider。密钥只走环境变量。
               </SheetDescription>
             </SheetHeader>
             <dl className="mt-4 space-y-2 text-sm">
               <div>
-                <dt className="text-muted-foreground">base URL</dt>
+                <dt className="text-muted-foreground">Server base URL</dt>
                 <dd data-testid="server-base-url" className="font-mono text-xs">
                   {baseUrl || "…"}
                 </dd>
@@ -53,6 +59,7 @@ export function Workbench() {
                 </dd>
               </div>
             </dl>
+            <ProviderSettings />
           </SheetContent>
         </Sheet>
       </header>

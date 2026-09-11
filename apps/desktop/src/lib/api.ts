@@ -1,4 +1,5 @@
 import type {
+  AppConfig,
   CreateSessionResponse,
   GetSessionResponse,
   HealthResponse,
@@ -16,6 +17,30 @@ export async function fetchHealth(baseUrl: string): Promise<HealthResponse> {
     throw new Error(`health ${res.status}`);
   }
   return (await res.json()) as HealthResponse;
+}
+
+export async function fetchConfig(baseUrl: string): Promise<AppConfig> {
+  const res = await fetch(`${baseUrl}/config`);
+  if (!res.ok) {
+    throw new Error(`get config ${res.status}`);
+  }
+  return (await res.json()) as AppConfig;
+}
+
+export async function putConfig(
+  baseUrl: string,
+  config: AppConfig,
+): Promise<AppConfig> {
+  const res = await fetch(`${baseUrl}/config`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`put config ${res.status}${text ? ` — ${text}` : ""}`);
+  }
+  return (await res.json()) as AppConfig;
 }
 
 export async function listSessions(

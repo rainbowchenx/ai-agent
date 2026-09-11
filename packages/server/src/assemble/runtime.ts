@@ -72,12 +72,9 @@ function createModelFromConfig(
     );
   }
 
-  // Env wins so .env OPENAI_BASE_URL works even after an old config.yaml was written.
-  const baseUrl = env.OPENAI_BASE_URL?.trim() || entry.baseUrl;
-
   return createOpenAICompatibleModel({
     id: modelRef,
-    baseUrl,
+    baseUrl: entry.baseUrl,
     apiKey,
     model: modelName,
   });
