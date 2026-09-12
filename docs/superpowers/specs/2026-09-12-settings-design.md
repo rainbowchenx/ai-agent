@@ -1,8 +1,8 @@
 # 设置中心（Settings Hub）— 设计规格
 
 **日期：** 2026-09-12  
-**状态：** 待用户审阅 UI 前的工程定稿；**登录 / 云账号不在本规格范围**  
-**关联：** `2026-09-05-agent-runtime-design.md`（配置模型 §4.2、权限 §5.2）；P0 已有弱化版 Provider 抽屉  
+**状态：** 已确认（UI 已对齐设计稿）；本规格指导热配置落地  
+**关联：** `2026-09-05-agent-runtime-design.md`（配置模型 §4.2、权限 §5.2）；计划见 `docs/superpowers/plans/2026-09-12-settings-runtime.md`  
 **参考：** [DeepSeek Harness — Models / Credentials](https://deepseek-harness.github.io/deepseek-harness/en/guide/providers)、Claude Code「配置与密钥分离 + 会话内切模型」
 
 ---
@@ -174,7 +174,32 @@ resolve(apiKeyEnv):
 | 主题 | 立即作用于 renderer |
 | 进行中的 run | **不打断**；不中途替换该 run 的 model/tools（避免半局状态） |
 
-装配建议：继续在 `assemble/runtime.ts`（或等价）于每次 run 使用 `getConfig()` + `resolveCredential`，禁止在进程启动时缓存死 Model 实例的密钥。
+装配：每次 run 使用 `configService.get()` + `resolveCredential`，禁止在进程启动时缓存死 Model 实例的密钥。
+
+### 5.5 ConfigService（独立性 + 热生效的中枢）
+
+设置 UI **不得**直接触碰 Runner / Session。Server 内唯一配置入口为 `ConfigService`：
+
+```text
+Settings UI ──HTTP──► routes/config|credentials
+                            │
+                            ▼
+              ConfigService.set / CredentialStore.set
+                            │
+              validate → persist → memory → onChange listeners
+                            │
+         ┌──────────────────┼──────────────────┐
+         ▼                  ▼                  ▼
+   下一轮 assemble     resolveCredential   桌面订阅刷新
+   (getEffective)      (每次模型请求)      (顶栏模型名等)
+```
+
+规则：
+
+- `get()` / `getEffective()`：返回当前内存中的有效 `AppConfig`。
+- `set(next)`：Zod 失败则拒绝并保留旧配置；成功则写盘并 `emit('change')`。
+- 进行中的 run **不中途换** model/tools；下一轮 `startRun` 再 `assembleRuntime({ config: configService.get(), resolveCredential })`。
+- 主题等客户端偏好走 `ui-store`，不进入 `ConfigService`。
 
 ---
 
