@@ -37,6 +37,7 @@ type SessionStore = {
     model: string;
     providerId?: string;
   }) => Promise<void>;
+  setDefaultModel: (modelRef: string) => Promise<void>;
   createAndSelect: (title?: string) => Promise<boolean>;
   selectSession: (id: string) => Promise<void>;
   sendMessage: (content: string) => void;
@@ -164,6 +165,54 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     const saved = await putConfig(baseUrl, next);
     set({ config: saved, error: null });
+  },
+
+  setDefaultModel: async (modelRef) => {
+    const { baseUrl, config } = get();
+    if (!baseUrl) {
+      set({ error: "Server base URL 未就绪" });
+      return;
+    }
+    const trimmed = modelRef.trim();
+    if (!trimmed) {
+      set({ error: "模型不能为空" });
+      return;
+    }
+    try {
+      const current = config ?? (await fetchConfig(baseUrl));
+      if (current.agents.default.model === trimmed) {
+        return;
+      }
+
+      const slash = trimmed.indexOf("/");
+      const providerId = slash >= 0 ? trimmed.slice(0, slash) : trimmed;
+      if (!current.providers.entries[providerId]) {
+        set({ error: `未知 Provider：${providerId}` });
+        return;
+      }
+
+      const next: AppConfig = {
+        ...current,
+        providers: {
+          ...current.providers,
+          default: providerId,
+        },
+        agents: {
+          ...current.agents,
+          default: {
+            ...current.agents.default,
+            model: trimmed,
+          },
+        },
+      };
+
+      const saved = await putConfig(baseUrl, next);
+      set({ config: saved, error: null });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   },
 
   createAndSelect: async (title) => {
