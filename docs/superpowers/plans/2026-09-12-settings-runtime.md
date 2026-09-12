@@ -55,17 +55,17 @@
   - `set(next: AppConfig): AppConfig` — Zod via `parseAppConfig`；失败 throw；成功写盘+更新内存+通知 listeners
   - `onChange(listener: (config: AppConfig) => void): () => void`
 
-- [ ] **Step 1: Write failing tests** for set persists, reject invalid keeps old, onChange fires once on success
+- [x] **Step 1: Write failing tests** for set persists, reject invalid keeps old, onChange fires once on success
 
-- [ ] **Step 2: Run tests — expect FAIL**
+- [x] **Step 2: Run tests — expect FAIL**
 
 Run: `pnpm --filter @agent2026/server exec vitest run src/config/config-service.test.ts`
 
-- [ ] **Step 3: Implement `createConfigService`**
+- [x] **Step 3: Implement `createConfigService`**
 
-- [ ] **Step 4: Run tests — expect PASS**
+- [x] **Step 4: Run tests — expect PASS**
 
-- [ ] **Step 5: Commit** `feat(server): add ConfigService for hot-reloadable app config`
+- [x] **Step 5: Commit** `feat(server): add ConfigService for hot-reloadable app config`
 
 ---
 
@@ -82,13 +82,13 @@ Run: `pnpm --filter @agent2026/server exec vitest run src/config/config-service.
 - `registerConfigRoutes` uses `configService.get/set`
 - `registerRunRoutes` gets `getConfig: () => configService.get()`, `resolveCredential`
 
-- [ ] **Step 1: Refactor `createApp` to own ConfigService** (replace bare `let config`)
+- [x] **Step 1: Refactor `createApp` to own ConfigService** (replace bare `let config`)
 
-- [ ] **Step 2: Add/adjust app tests for PUT /config persistence + /credentials describe**
+- [x] **Step 2: Add/adjust app tests for PUT /config persistence + /credentials describe**
 
-- [ ] **Step 3: Run** `pnpm --filter @agent2026/server test` — expect PASS
+- [x] **Step 3: Run** `pnpm --filter @agent2026/server test` — expect PASS
 
-- [ ] **Step 4: Commit** `feat(server): wire ConfigService and credentials into app assembly`
+- [x] **Step 4: Commit** `feat(server): wire ConfigService and credentials into app assembly`
 
 ---
 
@@ -111,13 +111,13 @@ Run: `pnpm --filter @agent2026/server exec vitest run src/config/config-service.
 - Settings page: Provider/Agent/权限「保存」调 store；外观只 `ui-store.setTheme`；MCP/高级仍占位；关于用 `/system`+health
 - Remove `flash("演示")` 作为成功路径
 
-- [ ] **Step 1: Implement settings-store with load/save helpers**
+- [x] **Step 1: Implement settings-store with load/save helpers**
 
-- [ ] **Step 2: Wire settings-page forms to store**（保留现有 HTML 风格 class）
+- [x] **Step 2: Wire settings-page forms to store**（保留现有 HTML 风格 class）
 
-- [ ] **Step 3: Manual sanity** — `pnpm --filter @agent2026/desktop exec tsc -p tsconfig.json --noEmit` + `pnpm --filter @agent2026/desktop test`
+- [x] **Step 3: Manual sanity** — `pnpm --filter @agent2026/desktop exec tsc -p tsconfig.json --noEmit` + `pnpm --filter @agent2026/desktop test`
 
-- [ ] **Step 4: Commit** `feat(desktop): wire settings page to config and credentials APIs`
+- [x] **Step 4: Commit** `feat(desktop): wire settings page to config and credentials APIs`
 
 ---
 
@@ -132,11 +132,11 @@ Run: `pnpm --filter @agent2026/server exec vitest run src/config/config-service.
 - After save, refresh `session-store.config` so `data-current-model` updates
 - In-flight run unchanged (no abort)
 
-- [ ] **Step 1: Implement working model switcher UI** (select or menu from `providers.entries.*.models` + current)
+- [x] **Step 1: Implement working model switcher UI** (select or menu from `providers.entries.*.models` + current)
 
-- [ ] **Step 2: Typecheck + desktop tests PASS**
+- [x] **Step 2: Typecheck + desktop tests PASS**
 
-- [ ] **Step 3: Commit** `feat(desktop): hot-switch default model from workbench topbar`
+- [x] **Step 3: Commit** `feat(desktop): hot-switch default model from workbench topbar`
 
 ---
 
