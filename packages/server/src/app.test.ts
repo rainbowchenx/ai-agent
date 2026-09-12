@@ -6,10 +6,13 @@ import { stringify as stringifyYaml } from "yaml";
 import { defaultAppConfig } from "@agent2026/shared";
 import type {
   CreateSessionResponse,
+  CredentialInfo,
   GetConfigResponse,
   GetSessionResponse,
   HealthResponse,
+  ListCredentialsResponse,
   ListSessionsResponse,
+  SystemPathsResponse,
 } from "@agent2026/shared";
 import { createApp } from "./app.js";
 import { openSqlite } from "./db/sqlite.js";
@@ -29,6 +32,7 @@ describe("Fastify app", () => {
     dir = await mkdtemp(join(tmpdir(), "agent2026-app-"));
     const app = await createApp({
       configPath: join(dir, "config.yaml"),
+      credentialsPath: join(dir, "credentials.yaml"),
       dbPath: join(dir, "data.sqlite"),
     });
     return app;
@@ -89,6 +93,7 @@ describe("Fastify app", () => {
 
     const app = await createApp({
       configPath: join(dir, "config.yaml"),
+      credentialsPath: join(dir, "credentials.yaml"),
       dbPath: join(dir, "data.sqlite"),
     });
     const res = await app.inject({ method: "GET", url: "/config" });
@@ -104,6 +109,7 @@ describe("Fastify app", () => {
     const app = await freshApp();
     const next = defaultAppConfig();
     next.agents.default.systemPrompt = "updated via put";
+    next.agents.default.maxTurns = 16;
 
     const invalid = await app.inject({
       method: "PUT",
@@ -121,6 +127,7 @@ describe("Fastify app", () => {
     expect(ok.json<GetConfigResponse>().agents.default.systemPrompt).toBe(
       "updated via put",
     );
+    expect(ok.json<GetConfigResponse>().agents.default.maxTurns).toBe(16);
 
     const got = await app.inject({ method: "GET", url: "/config" });
     await app.close();
@@ -128,8 +135,50 @@ describe("Fastify app", () => {
 
     const written = await readFile(join(dir, "config.yaml"), "utf8");
     expect(written).toContain("updated via put");
+    expect(written).toContain("maxTurns: 16");
     expect(written).toContain("apiKeyEnv: OPENAI_API_KEY");
     expect(written).not.toContain("apiKey:");
+  });
+
+  it("GET /credentials describes refs without echoing secrets", async () => {
+    const app = await freshApp();
+    const put = await app.inject({
+      method: "PUT",
+      url: "/credentials/OPENAI_API_KEY",
+      payload: { value: "sk-secret-should-not-leak" },
+    });
+    expect(put.statusCode).toBe(200);
+    expect(put.json<CredentialInfo>()).toEqual({
+      ref: "OPENAI_API_KEY",
+      configured: true,
+      source: "credentials",
+      writable: true,
+    });
+    expect(JSON.stringify(put.json())).not.toContain("sk-secret");
+
+    const listed = await app.inject({ method: "GET", url: "/credentials" });
+    expect(listed.statusCode).toBe(200);
+    const body = listed.json<ListCredentialsResponse>();
+    expect(body.items).toEqual([
+      {
+        ref: "OPENAI_API_KEY",
+        configured: true,
+        source: "credentials",
+        writable: true,
+      },
+    ]);
+    expect(JSON.stringify(body)).not.toContain("sk-secret");
+
+    const system = await app.inject({ method: "GET", url: "/system" });
+    await app.close();
+    expect(system.statusCode).toBe(200);
+    const paths = system.json<SystemPathsResponse>();
+    expect(paths.configPath).toBe(join(dir, "config.yaml"));
+    expect(paths.credentialsPath).toBe(join(dir, "credentials.yaml"));
+    expect(paths.version).toEqual(expect.any(String));
+
+    const written = await readFile(join(dir, "credentials.yaml"), "utf8");
+    expect(written).toContain("sk-secret-should-not-leak");
   });
 
   it("POST /sessions creates a session and lists it", async () => {

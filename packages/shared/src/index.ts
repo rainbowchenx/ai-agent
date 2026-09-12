@@ -8,6 +8,14 @@ export {
   type ProviderEntry,
 } from "./config.js";
 export {
+  credentialInfoSchema,
+  putCredentialRequestSchema,
+  type CredentialInfo,
+  type ListCredentialsResponse,
+  type PutCredentialRequest,
+  type SystemPathsResponse,
+} from "./credentials.js";
+export {
   type RunEndReason,
   type RunEvent,
 } from "./events.js";

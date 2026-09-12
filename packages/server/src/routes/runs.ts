@@ -21,6 +21,7 @@ export type RunRouteDeps = {
   hub: RunHub;
   model?: ModelPort;
   workspaceRoot: string;
+  resolveCredential?: (ref: string) => string | undefined;
 };
 
 type WsSocket = {
@@ -130,6 +131,7 @@ async function startRun(
       config: deps.getConfig(),
       workspaceRoot: deps.workspaceRoot,
       model: deps.model,
+      resolveCredential: deps.resolveCredential,
     });
 
     const history: AgentMessage[] = runtime.systemPrompt

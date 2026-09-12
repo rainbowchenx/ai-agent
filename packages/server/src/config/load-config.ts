@@ -12,6 +12,10 @@ export function defaultConfigPath(): string {
   return join(homedir(), ".agent2026", "config.yaml");
 }
 
+export function defaultCredentialsPath(): string {
+  return join(homedir(), ".agent2026", "credentials.yaml");
+}
+
 export function writeAppConfig(configPath: string, config: AppConfig): void {
   mkdirSync(dirname(configPath), { recursive: true });
   writeFileSync(configPath, stringifyYaml(config), "utf8");

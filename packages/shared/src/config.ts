@@ -31,6 +31,8 @@ const agentConfigSchema = z.object({
   model: z.string().min(1),
   systemPrompt: z.string(),
   tools: agentToolsSchema,
+  maxTurns: z.number().int().positive().optional(),
+  maxToolCalls: z.number().int().positive().nullable().optional(),
 });
 
 const mcpServerConfigSchema = z.object({

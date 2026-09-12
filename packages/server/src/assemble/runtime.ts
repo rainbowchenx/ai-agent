@@ -17,6 +17,8 @@ export type AssembleRuntimeInput = {
   model?: ModelPort;
   env?: NodeJS.ProcessEnv;
   maxTurns?: number;
+  /** Resolve API key by apiKeyEnv ref; defaults to process.env only. */
+  resolveCredential?: (ref: string) => string | undefined;
 };
 
 export type AssembledRuntime = {
@@ -31,10 +33,18 @@ export function assembleRuntime(input: AssembleRuntimeInput): AssembledRuntime {
   const { config, workspaceRoot } = input;
   const env = input.env ?? process.env;
   const agent = config.agents.default;
+  const maxTurns =
+    input.maxTurns ?? agent.maxTurns ?? DEFAULT_MAX_TURNS;
+  const maxToolCalls =
+    agent.maxToolCalls === null || agent.maxToolCalls === undefined
+      ? undefined
+      : agent.maxToolCalls;
 
   return {
-    runner: new Runner({ maxTurns: input.maxTurns ?? DEFAULT_MAX_TURNS }),
-    model: input.model ?? createModelFromConfig(config, env),
+    runner: new Runner({ maxTurns, maxToolCalls }),
+    model:
+      input.model ??
+      createModelFromConfig(config, env, input.resolveCredential),
     tools: createBuiltinToolPort(agent.tools.builtin as BuiltinToolName[], {
       workspaceRoot,
     }),
@@ -46,6 +56,7 @@ export function assembleRuntime(input: AssembleRuntimeInput): AssembledRuntime {
 function createModelFromConfig(
   config: AppConfig,
   env: NodeJS.ProcessEnv,
+  resolveCredential?: (ref: string) => string | undefined,
 ): ModelPort {
   const modelRef = config.agents.default.model;
   const slash = modelRef.indexOf("/");
@@ -65,10 +76,11 @@ function createModelFromConfig(
     throw new Error(`Unsupported provider type: ${entry.type}`);
   }
 
-  const apiKey = env[entry.apiKeyEnv];
+  const apiKey =
+    resolveCredential?.(entry.apiKeyEnv) ?? env[entry.apiKeyEnv];
   if (!apiKey) {
     throw new Error(
-      `Missing API key in environment variable ${entry.apiKeyEnv}`,
+      `Missing API key for ${entry.apiKeyEnv} (credentials file or environment)`,
     );
   }
 
