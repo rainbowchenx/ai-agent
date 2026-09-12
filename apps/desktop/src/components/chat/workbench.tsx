@@ -1,77 +1,52 @@
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { ChevronDown, User } from "lucide-react";
 import { useSessionStore } from "@/stores/session-store";
+import { useUiStore } from "@/stores/ui-store";
 import { ChatPane } from "./chat-pane";
-import { ProviderSettings } from "./provider-settings";
 import { RunDetails } from "./run-details";
 import { SessionList } from "./session-list";
 
 export function Workbench() {
-  const baseUrl = useSessionStore((s) => s.baseUrl);
-  const health = useSessionStore((s) => s.health);
   const error = useSessionStore((s) => s.error);
   const config = useSessionStore((s) => s.config);
-  const currentModel = config?.agents.default.model ?? "未加载";
+  const currentModel = config?.agents.default.model ?? "deepseek/deepseek-chat";
+  const setView = useUiStore((s) => s.setView);
 
   return (
-    <div className="flex h-screen flex-col" data-workbench>
-      <header className="flex items-center justify-between border-b px-3 py-2">
-        <div>
-          <h1 className="text-sm font-semibold">agent2026 工作台</h1>
-          <p className="text-xs text-muted-foreground">
-            当前模型{" "}
-            <span className="font-mono" data-current-model>
-              {currentModel}
-            </span>
-          </p>
-        </div>
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="sm" data-settings-sheet>
-              设置
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>设置</SheetTitle>
-              <SheetDescription>
-                配置本机 Server 与模型 Provider。密钥只走环境变量。
-              </SheetDescription>
-            </SheetHeader>
-            <dl className="mt-4 space-y-2 text-sm">
-              <div>
-                <dt className="text-muted-foreground">Server base URL</dt>
-                <dd data-testid="server-base-url" className="font-mono text-xs">
-                  {baseUrl || "…"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">health</dt>
-                <dd data-testid="server-health" className="font-mono text-xs">
-                  {health}
-                </dd>
-              </div>
-            </dl>
-            <ProviderSettings />
-          </SheetContent>
-        </Sheet>
+    <div className="flex h-full min-h-0 flex-col" data-workbench>
+      <header className="topbar">
+        <span className="topbar-title">Agent 工作台</span>
+        <button type="button" className="model-switcher-trigger" disabled>
+          <span className="font-mono text-xs" data-current-model>
+            {currentModel}
+          </span>
+          <ChevronDown width={14} height={14} aria-hidden />
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          data-open-settings
+          onClick={() => setView("settings")}
+        >
+          设置
+        </button>
+        <button type="button" className="avatar" aria-label="用户菜单">
+          <User />
+        </button>
       </header>
       {error ? (
         <p
-          className="border-b border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          className="border-b px-7 py-2 text-sm"
+          style={{
+            borderColor: "var(--border)",
+            color: "var(--destructive)",
+            background: "color-mix(in srgb, var(--destructive) 10%, transparent)",
+          }}
           data-app-error
         >
           {error}
         </p>
       ) : null}
-      <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)_18rem]">
+      <div className="workbench-grid">
         <SessionList />
         <ChatPane />
         <RunDetails />

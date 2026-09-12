@@ -16,9 +16,9 @@ export function ChatPane() {
   }, [items, status]);
 
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col" data-chat-pane>
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <h2 className="text-sm font-medium">对话</h2>
+    <section className="panel" data-chat-pane>
+      <div className="panel-header">
+        <h2 className="panel-title">对话</h2>
         <span className="font-mono text-[10px] text-muted-foreground">
           {selectedSessionId ?? "未选择会话"} · {status}
         </span>

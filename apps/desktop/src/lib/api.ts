@@ -1,10 +1,13 @@
 import type {
   AppConfig,
   CreateSessionResponse,
+  CredentialInfo,
   GetSessionResponse,
   HealthResponse,
+  ListCredentialsResponse,
   ListSessionsResponse,
   StopRunResponse,
+  SystemPathsResponse,
 } from "@agent2026/shared";
 
 export async function getServerBaseUrl(): Promise<string> {
@@ -17,6 +20,16 @@ export async function fetchHealth(baseUrl: string): Promise<HealthResponse> {
     throw new Error(`health ${res.status}`);
   }
   return (await res.json()) as HealthResponse;
+}
+
+export async function fetchSystem(
+  baseUrl: string,
+): Promise<SystemPathsResponse> {
+  const res = await fetch(`${baseUrl}/system`);
+  if (!res.ok) {
+    throw new Error(`system ${res.status}`);
+  }
+  return (await res.json()) as SystemPathsResponse;
 }
 
 export async function fetchConfig(baseUrl: string): Promise<AppConfig> {
@@ -41,6 +54,36 @@ export async function putConfig(
     throw new Error(`put config ${res.status}${text ? ` — ${text}` : ""}`);
   }
   return (await res.json()) as AppConfig;
+}
+
+export async function fetchCredentials(
+  baseUrl: string,
+): Promise<ListCredentialsResponse> {
+  const res = await fetch(`${baseUrl}/credentials`);
+  if (!res.ok) {
+    throw new Error(`get credentials ${res.status}`);
+  }
+  return (await res.json()) as ListCredentialsResponse;
+}
+
+export async function putCredential(
+  baseUrl: string,
+  ref: string,
+  value: string,
+): Promise<CredentialInfo> {
+  const res = await fetch(
+    `${baseUrl}/credentials/${encodeURIComponent(ref)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value }),
+    },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`put credential ${res.status}${text ? ` — ${text}` : ""}`);
+  }
+  return (await res.json()) as CredentialInfo;
 }
 
 export async function listSessions(

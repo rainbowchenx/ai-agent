@@ -7,12 +7,9 @@ export function RunDetails() {
   const injectDemoTool = useSessionStore((s) => s.injectDemoTool);
 
   return (
-    <aside
-      className="flex h-full min-h-0 flex-col border-l bg-card"
-      data-run-details
-    >
-      <div className="border-b px-3 py-2">
-        <h2 className="text-sm font-medium">运行详情 / Trace</h2>
+    <aside className="panel" data-run-details>
+      <div className="panel-header" style={{ flexDirection: "column", alignItems: "stretch" }}>
+        <h2 className="panel-title">运行详情 / Trace</h2>
         <dl className="mt-2 space-y-1 font-mono text-[10px] text-muted-foreground">
           <div>
             <dt className="inline">runId </dt>

@@ -22,12 +22,9 @@ export function SessionList() {
   const [title, setTitle] = useState("");
 
   return (
-    <aside
-      className="flex h-full min-h-0 flex-col border-r bg-card"
-      data-session-list
-    >
-      <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
-        <h2 className="text-sm font-medium">会话</h2>
+    <aside className="panel" data-session-list>
+      <div className="panel-header">
+        <h2 className="panel-title">会话</h2>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" data-session-create>
