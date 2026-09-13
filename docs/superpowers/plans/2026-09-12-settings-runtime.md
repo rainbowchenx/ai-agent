@@ -146,11 +146,11 @@ Run: `pnpm --filter @agent2026/server exec vitest run src/config/config-service.
 - Modify: `docs/superpowers/specs/2026-09-12-settings-design.md` status if needed
 - Optional: `docs/learning/` short note — only if already pattern in repo; else skip (YAGNI)
 
-- [ ] **Step 1: Run full** `pnpm --filter @agent2026/server test` and `pnpm --filter @agent2026/desktop test`
+- [x] **Step 1: Run full** `pnpm --filter @agent2026/server test` and `pnpm --filter @agent2026/desktop test`
 
-- [ ] **Step 2: Confirm checklist vs spec §9 success criteria** (config+credentials, no secret echo, next-run assemble, theme local)
+- [x] **Step 2: Confirm checklist vs spec §9 success criteria** (config+credentials, no secret echo, next-run assemble, theme local)
 
-- [ ] **Step 3: Commit** any doc-only fixes `docs: note settings runtime ConfigService landing`
+- [x] **Step 3: Commit** any doc-only fixes `docs: note settings runtime ConfigService landing`
 
 ---
 
