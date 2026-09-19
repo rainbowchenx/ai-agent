@@ -10,14 +10,17 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-19-trace-panel-design.md`
 
-## UI Reference（待补链接）
+## UI Reference
 
-> 用户出稿后把链接填到这里；**Task 7** 在链接就位前不要做像素级对齐。
+> **Task 7** 做像素级对齐时使用下列来源。Task 5–6 可先按规格落地功能，再在 Task 7 对照稿微调。
 
 | 项 | 值 |
 |----|-----|
-| Figma / 设计稿 | _（待用户补充）_ |
-| 备注 | 功能 UI（Task 5–6）先按规格 §4 与现有 `workbench`/`panel` 样式落地；Task 7 再对照稿微调 |
+| Figma | https://www.figma.com/design/6mxCXcFGVyupqTTKbZD7GF/myagent?node-id=10-1582 |
+| Figma `fileKey` | `6mxCXcFGVyupqTTKbZD7GF` |
+| Figma `nodeId` | `10:1582` |
+| HTML 参考 | `C:\Users\ROG\AppData\Roaming\TRAE SOLO CN\ModularData\ai-agent\work-mode-projects\6a94424d8542fab29b752f70\electron-agent-ui\pages\dashboard.html` |
+| 备注 | 实现时：Figma 定布局/层级/视觉；HTML 定结构与 class 命名习惯。勿把 HTML 整页拷进仓库，只移植 Trace 相关片段与 token。 |
 
 ## Global Constraints
 
@@ -431,15 +434,15 @@ feat(desktop): add collapsible session trace timeline panel
 
 ---
 
-### Task 7: UI 稿 / Figma 视觉对齐（**阻塞：待链接**）
+### Task 7: UI 稿 / Figma 视觉对齐
 
 **Files:** 以稿为准，通常改 `run-details.tsx`、`trace-timeline.tsx`、相关 CSS。
 
-**前置：** 本文档顶部「UI Reference」表中 Figma 链接已由用户填写。
+**来源（已填）：** 见本文档顶部 **UI Reference**（Figma `10:1582` + 本地 `dashboard.html`）。
 
-- [ ] **Step 1: 用户补充链接后**，实现者读取 Figma（`figma-design-to-code` / `get_design_context`）对照规格 §4  
-- [ ] **Step 2: 仅调视觉与间距/字体/轴样式；不改 API 契约**  
-- [ ] **Step 3: 若稿规定默认收起，将 `tracePanelOpen` 默认改为 `false`**  
+- [ ] **Step 1:** 用 `figma-design-to-code` + `get_design_context` / `get_screenshot` 对照节点 `10:1582`；同时打开 HTML 参考中 `.trace-sidebar` / `.trace-timeline` / `.trace-node` 等结构与 token  
+- [ ] **Step 2:** 仅调视觉与间距/字体/轴样式；不改 API 契约；**勿整页拷贝 HTML 进仓库**，只移植 Trace 相关片段  
+- [ ] **Step 3:** 若稿规定默认收起，将 `tracePanelOpen` 默认改为 `false`  
 - [ ] **Step 4: Commit**
 
 ```powershell
@@ -447,8 +450,6 @@ git commit -m @"
 style(desktop): align trace panel with design mock
 "@
 ```
-
-若链接长期未到：**跳过本任务**，功能版即可合并；视觉作 follow-up。
 
 ---
 
