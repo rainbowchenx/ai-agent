@@ -17,12 +17,14 @@ function formatRunLabel(createdAt: string, status: string): string {
 export function RunDetails() {
   const run = useSessionStore((s) => s.run);
   const sessionRuns = useSessionStore((s) => s.sessionRuns);
+  const sessionRunsError = useSessionStore((s) => s.sessionRunsError);
   const selectedTraceRunId = useSessionStore((s) => s.selectedTraceRunId);
   const historicalTrace = useSessionStore((s) => s.historicalTrace);
   const historicalTraceLoading = useSessionStore((s) => s.historicalTraceLoading);
   const historicalTraceError = useSessionStore((s) => s.historicalTraceError);
   const setTracePanelOpen = useSessionStore((s) => s.setTracePanelOpen);
   const selectTraceRun = useSessionStore((s) => s.selectTraceRun);
+  const refreshSessionRuns = useSessionStore((s) => s.refreshSessionRuns);
   const injectDemoTool = useSessionStore((s) => s.injectDemoTool);
 
   const view = resolveTraceView({
@@ -67,7 +69,15 @@ export function RunDetails() {
         };
 
   const showEmpty =
-    !view.loading && !view.error && view.nodes.length === 0;
+    !view.loading &&
+    !view.error &&
+    view.nodes.length === 0 &&
+    !selectedTraceRunId;
+  const showNoSpans =
+    !view.loading &&
+    !view.error &&
+    view.nodes.length === 0 &&
+    Boolean(selectedTraceRunId);
   const showLiveIndicator = view.isLive && run.status === "running";
   const hasData = !view.loading && !view.error && view.nodes.length > 0;
 
@@ -105,6 +115,15 @@ export function RunDetails() {
         <span data-trace-id>traceId: {meta.traceId ?? "—"}</span>
         <span data-run-status>status: {meta.status}</span>
       </div>
+
+      {sessionRunsError ? (
+        <div className="trace-error" data-trace-runs-error>
+          <p>{sessionRunsError}</p>
+          <button type="button" onClick={() => void refreshSessionRuns()}>
+            重试
+          </button>
+        </div>
+      ) : null}
 
       <div className="trace-run-switcher" data-trace-run-switcher>
         <label className="sr-only" htmlFor="trace-run-select">
@@ -166,6 +185,12 @@ export function RunDetails() {
         <div className="trace-empty-state" data-trace-empty>
           <GitBranch width={32} height={32} aria-hidden />
           <p>发送消息后这里会显示调用轨迹</p>
+        </div>
+      ) : null}
+
+      {showNoSpans ? (
+        <div className="trace-empty-state" data-trace-empty>
+          <p>该次运行暂无详细轨迹</p>
         </div>
       ) : null}
 

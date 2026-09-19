@@ -58,7 +58,7 @@ function toTraceRunSummary(row: TraceRow): TraceRunSummary {
   return {
     runId: row.run_id,
     traceId: row.id,
-    status: (row.status ?? "running") as TraceRunStatus,
+    status: (row.status ?? "completed") as TraceRunStatus,
     createdAt: row.created_at,
     endedAt: row.ended_at ?? undefined,
   };

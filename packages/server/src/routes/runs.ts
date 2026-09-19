@@ -176,6 +176,9 @@ async function startRun(
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    recorder.onEvent({ type: "error", runId, message });
+    recorder.onEvent({ type: "run_end", runId, reason: "error" });
+    await recorder.flush().catch(() => undefined);
     send(socket, { type: "error", runId, message });
     send(socket, { type: "run_end", runId, reason: "error" });
   } finally {

@@ -35,6 +35,30 @@ describe("applyRunEvent", () => {
     });
   });
 
+  it("resets traceNodes on a second run_start in the same session", () => {
+    let state = applyRunEvent(emptyProjection(), {
+      type: "run_start",
+      runId: "r1",
+      sessionId: "s1",
+      traceId: "t1",
+    });
+    state = applyRunEvent(state, { type: "message_delta", runId: "r1", delta: "a" });
+    state = applyRunEvent(state, { type: "run_end", runId: "r1", reason: "completed" });
+    expect(state.traceNodes.length).toBeGreaterThan(1);
+
+    state = applyRunEvent(state, {
+      type: "run_start",
+      runId: "r2",
+      sessionId: "s1",
+      traceId: "t2",
+    });
+    expect(state.runId).toBe("r2");
+    expect(state.traceNodes).toEqual([
+      expect.objectContaining({ kind: "run_start" }),
+    ]);
+    expect(state.items.length).toBeGreaterThan(0);
+  });
+
   it("opens and closes expandable tool cards", () => {
     let state = emptyProjection();
     state = applyRunEvent(state, {

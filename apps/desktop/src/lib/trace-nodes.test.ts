@@ -153,6 +153,10 @@ describe("applyTraceEvent", () => {
 });
 
 describe("spansToNodes", () => {
+  it("returns no nodes when a historical run has no spans", () => {
+    expect(spansToNodes([], { status: "completed" })).toEqual([]);
+  });
+
   it("maps persisted spans into TraceNode timeline", () => {
     const nodes = spansToNodes(
       [

@@ -38,7 +38,7 @@ pnpm smoke:trace
 pnpm dev:desktop
 ```
 
-1. 打开会话，确认右侧 **调用轨迹** 默认展开（标题旁 `[Trace]` 可折叠）。
+1. 打开会话，点标题旁 **Trace** 展开右侧调用轨迹（默认收起，跟 Figma）。
 2. 发送含工具的消息（如「读取 workspace 下 hello.txt」）→ Timeline 出现 run / generation / tool 节点。
 3. 下拉切换本会话历史 run → 从 SQLite 加载只读 spans。
 4. 关闭 Trace 开关 → 右栏隐藏，主对话区拉满。

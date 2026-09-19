@@ -211,6 +211,10 @@ export function spansToNodes(
   spans: GetRunTraceResponse["spans"],
   meta: { status: GetRunTraceResponse["status"] },
 ): TraceNode[] {
+  if (spans.length === 0) {
+    return [];
+  }
+
   const nodes: TraceNode[] = [{ id: "history:start", kind: "run_start" }];
 
   spans.forEach((span, index) => {

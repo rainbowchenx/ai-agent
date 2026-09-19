@@ -72,7 +72,10 @@ export function applyRunEvent(
   const next: RunProjection = {
     ...state,
     items: state.items.slice(),
-    traceNodes: applyTraceEvent(state.traceNodes, event),
+    traceNodes:
+      event.type === "run_start"
+        ? applyTraceEvent([], event)
+        : applyTraceEvent(state.traceNodes, event),
   };
 
   switch (event.type) {

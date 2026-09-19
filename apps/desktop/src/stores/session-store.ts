@@ -40,6 +40,7 @@ type SessionStore = {
   tracePanelOpen: boolean;
   selectedTraceRunId: string | null;
   sessionRuns: SessionRunSummary[];
+  sessionRunsError: string | null;
   historicalTrace: GetRunTraceResponse | null;
   historicalTraceLoading: boolean;
   historicalTraceError: string | null;
@@ -131,6 +132,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   tracePanelOpen: false,
   selectedTraceRunId: null,
   sessionRuns: [],
+  sessionRunsError: null,
   historicalTrace: null,
   historicalTraceLoading: false,
   historicalTraceError: null,
@@ -186,16 +188,24 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   refreshSessionRuns: async () => {
-    const { baseUrl, selectedSessionId } = get();
+    const { baseUrl, selectedSessionId, run } = get();
     if (!baseUrl || !selectedSessionId) {
-      set({ sessionRuns: [] });
+      set({ sessionRuns: [], sessionRunsError: null });
       return;
     }
     try {
       const response = await listSessionRuns(baseUrl, selectedSessionId);
-      set({ sessionRuns: response.runs });
-    } catch {
-      set({ sessionRuns: [] });
+      set({ sessionRuns: response.runs, sessionRunsError: null });
+      const liveId = run.runId;
+      const { selectedTraceRunId } = get();
+      if (!liveId && selectedTraceRunId === null && response.runs[0]) {
+        await get().selectTraceRun(response.runs[0].runId);
+      }
+    } catch (err) {
+      set({
+        sessionRunsError:
+          err instanceof Error ? err.message : "无法加载运行列表",
+      });
     }
   },
 
