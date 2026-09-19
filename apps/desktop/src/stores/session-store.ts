@@ -128,7 +128,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   sessions: [],
   selectedSessionId: null,
   run: emptyProjection(),
-  tracePanelOpen: true,
+  tracePanelOpen: false,
   selectedTraceRunId: null,
   sessionRuns: [],
   historicalTrace: null,

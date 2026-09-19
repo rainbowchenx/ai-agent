@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { resolveTraceView } from "@/lib/trace-view";
 import { useSessionStore } from "@/stores/session-store";
+import { Activity, GitBranch, X } from "lucide-react";
 import { TraceTimeline } from "./trace-timeline";
 
 function formatRunLabel(createdAt: string, status: string): string {
@@ -69,6 +69,7 @@ export function RunDetails() {
   const showEmpty =
     !view.loading && !view.error && view.nodes.length === 0;
   const showLiveIndicator = view.isLive && run.status === "running";
+  const hasData = !view.loading && !view.error && view.nodes.length > 0;
 
   const onRetry = () => {
     if (selectedTraceRunId) {
@@ -78,45 +79,31 @@ export function RunDetails() {
 
   return (
     <aside
-      className="panel trace-sidebar"
+      className={`panel trace-sidebar${hasData ? " has-data" : ""}`}
       data-run-details
       data-trace-panel
       aria-label="调用轨迹"
     >
-      <div className="trace-title-bar panel-header">
-        <h2 className="panel-title trace-title">调用轨迹</h2>
+      <div className="trace-title-bar">
+        <h2 className="trace-title">
+          <Activity width={18} height={18} aria-hidden />
+          <span>调用轨迹</span>
+        </h2>
         <button
           type="button"
-          className="btn btn-secondary btn-sm trace-close"
+          className="trace-close"
           aria-label="关闭调用轨迹"
           data-trace-close
           onClick={() => setTracePanelOpen(false)}
         >
-          关闭
+          <X width={16} height={16} aria-hidden />
         </button>
       </div>
 
       <div className="trace-meta" data-trace-meta>
-        <dl className="space-y-1 font-mono text-[10px] text-muted-foreground">
-          <div>
-            <dt className="inline">runId </dt>
-            <dd className="inline" data-run-id>
-              {meta.runId ?? "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="inline">traceId </dt>
-            <dd className="inline" data-trace-id>
-              {meta.traceId ?? "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="inline">status </dt>
-            <dd className="inline" data-run-status>
-              {meta.status}
-            </dd>
-          </div>
-        </dl>
+        <span data-run-id>runId: {meta.runId ?? "—"}</span>
+        <span data-trace-id>traceId: {meta.traceId ?? "—"}</span>
+        <span data-run-status>status: {meta.status}</span>
       </div>
 
       <div className="trace-run-switcher" data-trace-run-switcher>
@@ -148,7 +135,7 @@ export function RunDetails() {
       </div>
 
       {import.meta.env.DEV ? (
-        <div className="border-b px-3 py-2">
+        <div className="trace-demo">
           <Button
             size="sm"
             variant="outline"
@@ -160,38 +147,31 @@ export function RunDetails() {
         </div>
       ) : null}
 
-      <ScrollArea className="flex-1">
-        <div className="p-3">
-          {view.loading ? (
-            <p className="text-sm text-muted-foreground" data-trace-loading>
-              加载历史轨迹…
-            </p>
-          ) : null}
-
-          {view.error ? (
-            <div className="space-y-2" data-trace-error>
-              <p className="text-sm" style={{ color: "var(--destructive)" }}>
-                {view.error}
-              </p>
-              <Button size="sm" variant="outline" onClick={onRetry}>
-                重试
-              </Button>
-            </div>
-          ) : null}
-
-          {showEmpty ? (
-            <div className="trace-empty-state" data-trace-empty>
-              <p className="text-sm text-muted-foreground">
-                发送消息后这里会显示调用轨迹
-              </p>
-            </div>
-          ) : null}
-
-          {!view.loading && !view.error && view.nodes.length > 0 ? (
-            <TraceTimeline nodes={view.nodes} isLive={showLiveIndicator} />
-          ) : null}
+      {view.loading ? (
+        <div className="trace-loading" data-trace-loading>
+          加载历史轨迹…
         </div>
-      </ScrollArea>
+      ) : null}
+
+      {view.error ? (
+        <div className="trace-error" data-trace-error>
+          <p>{view.error}</p>
+          <button type="button" onClick={onRetry}>
+            重试
+          </button>
+        </div>
+      ) : null}
+
+      {showEmpty ? (
+        <div className="trace-empty-state" data-trace-empty>
+          <GitBranch width={32} height={32} aria-hidden />
+          <p>发送消息后这里会显示调用轨迹</p>
+        </div>
+      ) : null}
+
+      {hasData ? (
+        <TraceTimeline nodes={view.nodes} isLive={showLiveIndicator} />
+      ) : null}
     </aside>
   );
 }

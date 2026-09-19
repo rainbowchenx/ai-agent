@@ -34,6 +34,20 @@ function nodeTitle(node: TraceNode): string {
   }
 }
 
+function nodeTime(node: TraceNode): string | undefined {
+  if (node.kind !== "run_start" || !node.at) {
+    return undefined;
+  }
+  const date = new Date(node.at);
+  if (Number.isNaN(date.getTime())) {
+    return node.at;
+  }
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
 function nodeSummary(node: TraceNode): string | undefined {
   switch (node.kind) {
     case "generation":
@@ -45,8 +59,6 @@ function nodeSummary(node: TraceNode): string | undefined {
       return node.status === "running" ? "执行中…" : node.status;
     case "error":
       return node.message;
-    case "run_start":
-      return node.at;
     default:
       return undefined;
   }
@@ -69,6 +81,7 @@ export function TraceTimeline({ nodes, isLive = false }: TraceTimelineProps) {
       <div className="trace-timeline-list">
         {nodes.map((node) => {
           const summary = nodeSummary(node);
+          const time = nodeTime(node);
           return (
             <div
               key={node.id}
@@ -77,8 +90,15 @@ export function TraceTimeline({ nodes, isLive = false }: TraceTimelineProps) {
               data-trace-node-id={node.id}
             >
               <div className="trace-node-title">{nodeTitle(node)}</div>
+              {time ? <div className="trace-node-time">{time}</div> : null}
               {summary ? (
-                <div className="trace-node-summary">{summary}</div>
+                node.kind === "tool" ? (
+                  <button type="button" className="trace-node-summary">
+                    {summary}
+                  </button>
+                ) : (
+                  <div className="trace-node-summary">{summary}</div>
+                )
               ) : null}
             </div>
           );

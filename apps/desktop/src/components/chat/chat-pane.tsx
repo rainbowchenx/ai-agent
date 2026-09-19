@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { GitBranch } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSessionStore } from "@/stores/session-store";
 import { Composer } from "./composer";
@@ -33,6 +34,7 @@ export function ChatPane() {
           aria-pressed={tracePanelOpen}
           onClick={() => setTracePanelOpen(!tracePanelOpen)}
         >
+          <GitBranch width={16} height={16} aria-hidden />
           调用轨迹
         </button>
       </div>
