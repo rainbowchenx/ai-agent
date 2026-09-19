@@ -17,7 +17,9 @@ CREATE TABLE IF NOT EXISTS traces (
   id TEXT PRIMARY KEY,
   run_id TEXT NOT NULL,
   session_id TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  status TEXT,
+  ended_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS spans (

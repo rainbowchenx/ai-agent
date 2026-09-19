@@ -237,4 +237,29 @@ describe("SqliteTracePort", () => {
     });
     expect(JSON.parse(child?.metadata ?? "{}")).toEqual({ path: "a.txt" });
   });
+
+  it("startTrace sets status running; updateTraceEnd + listRunsBySession + getByRunId roundtrip", async () => {
+    dir = await mkdtemp(join(tmpdir(), "agent2026-trace-query-"));
+    const dbPath = join(dir, "data.sqlite");
+    const db = openSqlite(dbPath);
+    const port = new SqliteTracePort(db);
+    const { traceId } = await port.startTrace({ runId: "r1", sessionId: "s1" });
+    const { spanId } = await port.startSpan({
+      traceId,
+      name: "generation",
+      kind: "generation",
+    });
+    await port.endSpan({ spanId, status: "ok" });
+    await port.updateTraceEnd({
+      runId: "r1",
+      status: "completed",
+      endedAt: new Date().toISOString(),
+    });
+    const runs = await port.listRunsBySession("s1", 20);
+    expect(runs[0]).toMatchObject({ runId: "r1", traceId, status: "completed" });
+    const full = await port.getByRunId("r1");
+    expect(full?.spans).toHaveLength(1);
+    expect(full?.spans[0]?.kind).toBe("generation");
+    db.close();
+  });
 });

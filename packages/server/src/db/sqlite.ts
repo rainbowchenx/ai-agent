@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import Database from "better-sqlite3";
+import { migrateTracesSchema } from "./migrate-traces.js";
 import { SCHEMA_SQL } from "./schema.js";
 
 export function defaultSqlitePath(): string {
@@ -16,5 +17,6 @@ export function openSqlite(
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA_SQL);
+  migrateTracesSchema(db);
   return db;
 }
