@@ -1,15 +1,23 @@
-import type { AppConfig, SessionSummary } from "@agent2026/shared";
+import type {
+  AppConfig,
+  GetRunTraceResponse,
+  ListSessionRunsResponse,
+  SessionSummary,
+} from "@agent2026/shared";
 import { create } from "zustand";
 import {
   createSession,
   fetchConfig,
   fetchHealth,
+  getRunTrace,
   getServerBaseUrl,
   getSession,
+  listSessionRuns,
   listSessions,
   putConfig,
   stopRun,
 } from "@/lib/api";
+import { isLiveTraceSelection } from "@/lib/trace-view";
 import {
   appendUserMessage,
   applyRunEvent,
@@ -20,6 +28,8 @@ import {
 } from "@/lib/apply-run-event";
 import { RunSocket } from "@/lib/ws-client";
 
+type SessionRunSummary = ListSessionRunsResponse["runs"][number];
+
 type SessionStore = {
   baseUrl: string;
   health: string;
@@ -27,10 +37,17 @@ type SessionStore = {
   sessions: SessionSummary[];
   selectedSessionId: string | null;
   run: RunProjection;
+  tracePanelOpen: boolean;
+  selectedTraceRunId: string | null;
+  sessionRuns: SessionRunSummary[];
+  historicalTrace: GetRunTraceResponse | null;
+  historicalTraceLoading: boolean;
+  historicalTraceError: string | null;
   ready: boolean;
   error: string | null;
   init: () => Promise<void>;
   refreshSessions: () => Promise<void>;
+  refreshSessionRuns: () => Promise<void>;
   loadConfig: () => Promise<void>;
   saveProviderSettings: (input: {
     apiBaseUrl: string;
@@ -42,10 +59,67 @@ type SessionStore = {
   selectSession: (id: string) => Promise<void>;
   sendMessage: (content: string) => void;
   stopCurrentRun: () => Promise<void>;
+  setTracePanelOpen: (open: boolean) => void;
+  selectTraceRun: (runId: string | null) => Promise<void>;
   injectDemoTool: () => void;
 };
 
 let socket: RunSocket | null = null;
+
+function clearHistoricalTraceState(): Pick<
+  SessionStore,
+  "historicalTrace" | "historicalTraceLoading" | "historicalTraceError"
+> {
+  return {
+    historicalTrace: null,
+    historicalTraceLoading: false,
+    historicalTraceError: null,
+  };
+}
+
+async function loadHistoricalTrace(
+  get: () => SessionStore,
+  set: (
+    partial:
+      | Partial<SessionStore>
+      | ((state: SessionStore) => Partial<SessionStore>),
+  ) => void,
+  runId: string,
+): Promise<void> {
+  const { baseUrl } = get();
+  if (!baseUrl) {
+    return;
+  }
+
+  set({
+    historicalTrace: null,
+    historicalTraceLoading: true,
+    historicalTraceError: null,
+  });
+
+  try {
+    const historicalTrace = await getRunTrace(baseUrl, runId);
+    const current = get();
+    if (current.selectedTraceRunId !== runId) {
+      return;
+    }
+    set({
+      historicalTrace,
+      historicalTraceLoading: false,
+      historicalTraceError: null,
+    });
+  } catch (err) {
+    const current = get();
+    if (current.selectedTraceRunId !== runId) {
+      return;
+    }
+    set({
+      historicalTrace: null,
+      historicalTraceLoading: false,
+      historicalTraceError: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
   baseUrl: "",
@@ -54,6 +128,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   sessions: [],
   selectedSessionId: null,
   run: emptyProjection(),
+  tracePanelOpen: true,
+  selectedTraceRunId: null,
+  sessionRuns: [],
+  historicalTrace: null,
+  historicalTraceLoading: false,
+  historicalTraceError: null,
   ready: false,
   error: null,
 
@@ -72,6 +152,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           set((state) => ({ run: applyRunEvent(state.run, event) }));
           if (event.type === "run_end") {
             void get().refreshSessions();
+            void get().refreshSessionRuns();
           }
         },
       );
@@ -102,6 +183,20 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }
     const sessions = await listSessions(baseUrl);
     set({ sessions });
+  },
+
+  refreshSessionRuns: async () => {
+    const { baseUrl, selectedSessionId } = get();
+    if (!baseUrl || !selectedSessionId) {
+      set({ sessionRuns: [] });
+      return;
+    }
+    try {
+      const response = await listSessionRuns(baseUrl, selectedSessionId);
+      set({ sessionRuns: response.runs });
+    } catch {
+      set({ sessionRuns: [] });
+    }
   },
 
   loadConfig: async () => {
@@ -241,8 +336,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       set({
         selectedSessionId: id,
         run: projectionFromMessages(id, session.messages),
+        selectedTraceRunId: null,
+        sessionRuns: [],
+        ...clearHistoricalTraceState(),
         error: null,
       });
+      await get().refreshSessionRuns();
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : String(err),
@@ -288,6 +387,26 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         error: err instanceof Error ? err.message : String(err),
       });
     }
+  },
+
+  setTracePanelOpen: (open) => {
+    set({ tracePanelOpen: open });
+  },
+
+  selectTraceRun: async (runId) => {
+    const { run } = get();
+    set({ selectedTraceRunId: runId });
+
+    if (isLiveTraceSelection(runId, run.runId)) {
+      set(clearHistoricalTraceState());
+      return;
+    }
+
+    if (!runId) {
+      return;
+    }
+
+    await loadHistoricalTrace(get, set, runId);
   },
 
   injectDemoTool: () => {

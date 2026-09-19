@@ -2,9 +2,11 @@ import type {
   AppConfig,
   CreateSessionResponse,
   CredentialInfo,
+  GetRunTraceResponse,
   GetSessionResponse,
   HealthResponse,
   ListCredentialsResponse,
+  ListSessionRunsResponse,
   ListSessionsResponse,
   StopRunResponse,
   SystemPathsResponse,
@@ -131,4 +133,30 @@ export async function stopRun(
     throw new Error(`stop run ${res.status}`);
   }
   return (await res.json()) as StopRunResponse;
+}
+
+export async function listSessionRuns(
+  baseUrl: string,
+  sessionId: string,
+  limit = 20,
+): Promise<ListSessionRunsResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const res = await fetch(
+    `${baseUrl}/sessions/${encodeURIComponent(sessionId)}/runs?${params}`,
+  );
+  if (!res.ok) {
+    throw new Error(`list session runs ${res.status}`);
+  }
+  return (await res.json()) as ListSessionRunsResponse;
+}
+
+export async function getRunTrace(
+  baseUrl: string,
+  runId: string,
+): Promise<GetRunTraceResponse> {
+  const res = await fetch(`${baseUrl}/runs/${encodeURIComponent(runId)}/trace`);
+  if (!res.ok) {
+    throw new Error(`get run trace ${res.status}`);
+  }
+  return (await res.json()) as GetRunTraceResponse;
 }
