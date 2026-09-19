@@ -37,6 +37,8 @@ function terminalSpanStatus(
 
 export function createRunTraceRecorder(port: RunTraceRecorderPort): {
   onEvent(event: RunnerEvent): void;
+  /** Wait for queued span writes (for tests / post-run consistency). */
+  flush(): Promise<void>;
 } {
   const state: RecorderState = {
     toolSpanIds: new Map(),
@@ -141,6 +143,9 @@ export function createRunTraceRecorder(port: RunTraceRecorderPort): {
         .catch(() => {
           // Span write failures must not block the run.
         });
+    },
+    flush(): Promise<void> {
+      return chain;
     },
   };
 }

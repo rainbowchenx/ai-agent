@@ -16,6 +16,7 @@ import { registerHealthRoutes } from "./routes/health.js";
 import { registerRunRoutes } from "./routes/runs.js";
 import { registerSessionsRoutes } from "./routes/sessions.js";
 import { registerSystemRoutes } from "./routes/system.js";
+import { registerTraceRoutes } from "./routes/traces.js";
 import { SqliteSessionStore } from "./store/sqlite-session-store.js";
 import { SqliteTracePort } from "./store/sqlite-trace-port.js";
 import { RunHub } from "./ws/run-hub.js";
@@ -89,6 +90,7 @@ export async function createApp(
     workspaceRoot,
     resolveCredential: (ref) => credentials.resolve(ref),
   });
+  registerTraceRoutes(app, { sessionStore, tracePort });
 
   return app;
 }

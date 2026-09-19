@@ -11,6 +11,7 @@ import type {
   SqliteSessionStore,
 } from "../store/sqlite-session-store.js";
 import type { SqliteTracePort } from "../store/sqlite-trace-port.js";
+import { createRunTraceRecorder } from "../trace/run-trace-recorder.js";
 import { toRunEvent } from "../ws/map-run-event.js";
 import type { RunHub } from "../ws/run-hub.js";
 
@@ -115,6 +116,7 @@ async function startRun(
     runId,
     sessionId: request.sessionId,
   });
+  const recorder = createRunTraceRecorder(deps.tracePort);
 
   try {
     const controller = deps.hub.create(runId);
@@ -150,6 +152,7 @@ async function startRun(
           pendingEnd = event;
           return;
         }
+        recorder.onEvent(event);
         send(socket, toRunEvent(event));
       },
       signal: controller.signal,
@@ -165,7 +168,11 @@ async function startRun(
     );
 
     if (pendingEnd) {
+      recorder.onEvent(pendingEnd);
+      await recorder.flush();
       send(socket, toRunEvent(pendingEnd));
+    } else {
+      await recorder.flush();
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

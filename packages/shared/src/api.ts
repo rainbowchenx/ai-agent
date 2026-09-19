@@ -61,4 +61,32 @@ export type StopRunResponse = {
   ok: true;
 };
 
+export type ListSessionRunsResponse = {
+  runs: Array<{
+    runId: string;
+    traceId: string;
+    status: "running" | "completed" | "stopped" | "error";
+    createdAt: string;
+    endedAt?: string;
+  }>;
+};
+
+export type GetRunTraceResponse = {
+  runId: string;
+  traceId: string;
+  status: "running" | "completed" | "stopped" | "error";
+  createdAt: string;
+  endedAt?: string;
+  spans: Array<{
+    spanId: string;
+    parentSpanId?: string;
+    name: string;
+    kind: "generation" | "tool" | "permission";
+    status?: "ok" | "error";
+    startedAt: string;
+    endedAt?: string;
+    summary?: string;
+  }>;
+};
+
 export type WsClientMessage = RunWsRequest | PermissionWsResponse;

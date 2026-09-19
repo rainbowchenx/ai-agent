@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { ModelPort } from "@agent2026/core";
 import type {
   CreateSessionResponse,
+  GetRunTraceResponse,
   GetSessionResponse,
+  ListSessionRunsResponse,
   RunEvent,
   StopRunResponse,
   WsClientMessage,
@@ -273,6 +275,54 @@ describe("WebSocket run + stop", () => {
     ]);
     expect(body.messages[2]?.content).toBe("file-body");
     expect(body.messages[3]?.content).toBe("done reading");
+
+    const runs = await app.inject({
+      method: "GET",
+      url: `/sessions/${sessionId}/runs`,
+    });
+    expect(runs.statusCode).toBe(200);
+    const runsBody = runs.json<ListSessionRunsResponse>();
+    expect(runsBody.runs.length).toBeGreaterThanOrEqual(1);
+    const runId = runsBody.runs[0]?.runId;
+    expect(runId).toEqual(expect.any(String));
+
+    const trace = await app.inject({
+      method: "GET",
+      url: `/runs/${runId}/trace`,
+    });
+    expect(trace.statusCode).toBe(200);
+    const traceBody = trace.json<GetRunTraceResponse>();
+    expect(traceBody.spans.some((s) => s.kind === "tool")).toBe(true);
+  });
+
+  it("GET /runs/nope/trace returns 404 for unknown runId", async () => {
+    const model: ModelPort = {
+      id: "mock",
+      async *stream() {
+        yield { type: "text_delta", text: "x" };
+      },
+    };
+    const app = await appWithModel(model);
+    const trace = await app.inject({
+      method: "GET",
+      url: "/runs/nope/trace",
+    });
+    expect(trace.statusCode).toBe(404);
+  });
+
+  it("GET /sessions/:sessionId/runs returns 404 for missing session", async () => {
+    const model: ModelPort = {
+      id: "mock",
+      async *stream() {
+        yield { type: "text_delta", text: "x" };
+      },
+    };
+    const app = await appWithModel(model);
+    const runs = await app.inject({
+      method: "GET",
+      url: "/sessions/missing-session/runs",
+    });
+    expect(runs.statusCode).toBe(404);
   });
 
   it("after stop-during-tools, GET session has no unpaired toolCalls", async () => {
