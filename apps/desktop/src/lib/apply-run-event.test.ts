@@ -27,7 +27,12 @@ describe("applyRunEvent", () => {
     expect(state.items).toEqual([
       { kind: "assistant", id: "delta-r1-0", content: "hello", streaming: false },
     ]);
-    expect(state.traceLines).toHaveLength(4);
+    expect(state.traceNodes).toHaveLength(3);
+    expect(state.traceNodes[0]).toMatchObject({ kind: "run_start" });
+    expect(state.traceNodes[state.traceNodes.length - 1]).toMatchObject({
+      kind: "run_end",
+      reason: "completed",
+    });
   });
 
   it("opens and closes expandable tool cards", () => {
@@ -153,10 +158,12 @@ describe("shouldApplyRunEvent", () => {
   });
 });
 
-describe("trace line", () => {
-  it("keeps raw RunEvent JSON for the details pane", () => {
+describe("trace nodes", () => {
+  it("projects run_end into TraceNode timeline", () => {
     const event: RunEvent = { type: "run_end", runId: "r", reason: "error" };
     const state = applyRunEvent(emptyProjection(), event);
-    expect(state.traceLines[0]).toBe(JSON.stringify(event));
+    expect(state.traceNodes).toEqual([
+      { id: "r:end", kind: "run_end", reason: "error" },
+    ]);
   });
 });

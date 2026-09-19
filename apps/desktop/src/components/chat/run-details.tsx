@@ -46,9 +46,9 @@ export function RunDetails() {
           data-trace-panel
           className="whitespace-pre-wrap break-all p-3 font-mono text-[10px] leading-relaxed text-muted-foreground"
         >
-          {run.traceLines.length === 0
+          {run.traceNodes.length === 0
             ? "尚无 RunEvent。发送消息或点「演示工具卡」。"
-            : run.traceLines.join("\n")}
+            : run.traceNodes.map((node) => JSON.stringify(node)).join("\n")}
         </pre>
       </ScrollArea>
     </aside>

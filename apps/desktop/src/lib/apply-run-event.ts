@@ -1,4 +1,5 @@
 import type { MessageDto, RunEvent } from "@agent2026/shared";
+import { applyTraceEvent, type TraceNode } from "./trace-nodes.js";
 
 export type ChatItem =
   | { kind: "user"; id: string; content: string }
@@ -30,7 +31,7 @@ export type RunProjection = {
   sessionId: string | null;
   traceId: string | null;
   status: RunStatus;
-  traceLines: string[];
+  traceNodes: TraceNode[];
 };
 
 export function emptyProjection(): RunProjection {
@@ -40,12 +41,8 @@ export function emptyProjection(): RunProjection {
     sessionId: null,
     traceId: null,
     status: "idle",
-    traceLines: [],
+    traceNodes: [],
   };
-}
-
-export function formatTraceLine(event: RunEvent): string {
-  return JSON.stringify(event);
 }
 
 export function shouldApplyRunEvent(
@@ -75,7 +72,7 @@ export function applyRunEvent(
   const next: RunProjection = {
     ...state,
     items: state.items.slice(),
-    traceLines: [...state.traceLines, formatTraceLine(event)],
+    traceNodes: applyTraceEvent(state.traceNodes, event),
   };
 
   switch (event.type) {
