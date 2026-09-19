@@ -9,6 +9,8 @@ export function ChatPane() {
   const items = useSessionStore((s) => s.run.items);
   const selectedSessionId = useSessionStore((s) => s.selectedSessionId);
   const status = useSessionStore((s) => s.run.status);
+  const tracePanelOpen = useSessionStore((s) => s.tracePanelOpen);
+  const setTracePanelOpen = useSessionStore((s) => s.setTracePanelOpen);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -17,11 +19,22 @@ export function ChatPane() {
 
   return (
     <section className="panel" data-chat-pane>
-      <div className="panel-header">
-        <h2 className="panel-title">对话</h2>
-        <span className="font-mono text-[10px] text-muted-foreground">
-          {selectedSessionId ?? "未选择会话"} · {status}
-        </span>
+      <div className="panel-header session-header">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 className="panel-title session-title">对话</h2>
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {selectedSessionId ?? "未选择会话"} · {status}
+          </span>
+        </div>
+        <button
+          type="button"
+          className={`trace-toggle${tracePanelOpen ? " active" : ""}`}
+          data-trace-toggle
+          aria-pressed={tracePanelOpen}
+          onClick={() => setTracePanelOpen(!tracePanelOpen)}
+        >
+          调用轨迹
+        </button>
       </div>
       <ScrollArea className="flex-1">
         <div data-chat-list className="space-y-2 p-3">

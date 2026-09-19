@@ -26,6 +26,7 @@ function collectModelOptions(
 export function Workbench() {
   const error = useSessionStore((s) => s.error);
   const config = useSessionStore((s) => s.config);
+  const tracePanelOpen = useSessionStore((s) => s.tracePanelOpen);
   const setDefaultModel = useSessionStore((s) => s.setDefaultModel);
   const currentModel = config?.agents.default.model ?? "deepseek/deepseek-chat";
   const setView = useUiStore((s) => s.setView);
@@ -92,10 +93,13 @@ export function Workbench() {
           {error}
         </p>
       ) : null}
-      <div className="workbench-grid">
+      <div
+        className={`workbench-grid${tracePanelOpen ? " trace-visible" : " trace-collapsed"}`}
+        data-trace-visible={tracePanelOpen}
+      >
         <SessionList />
         <ChatPane />
-        <RunDetails />
+        {tracePanelOpen ? <RunDetails /> : null}
       </div>
     </div>
   );
