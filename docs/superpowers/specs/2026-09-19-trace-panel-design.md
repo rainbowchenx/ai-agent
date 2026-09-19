@@ -1,7 +1,7 @@
 # P1 Trace 面板 — 设计规格
 
 **日期：** 2026-09-19  
-**状态：** 已确认（待实现计划）  
+**状态：** 已实现（`feat/trace-panel`，待合并）  
 **关联：** `2026-09-05-agent-runtime-design.md` §7 P1（Trace 面板打磨）；P0 验收 `docs/learning/P0-REVIEW.md`  
 **参考体验：** ZCode「调用轨迹 / 任务时间线」（观感参考；不复制 zcode-monitor 全套观测站）
 

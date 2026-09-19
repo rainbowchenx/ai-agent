@@ -460,8 +460,8 @@ style(desktop): align trace panel with design mock
 - Modify: `docs/learning/P0-REVIEW.md` 或短笔记 `docs/learning/P1-TRACE.md`（可选）
 - Optional: `scripts/smoke-p0.ts` 增加「tool run 后 GET trace spans.length ≥ 1」（可新建 `scripts/smoke-trace.ts`）
 
-- [ ] **Step 1: 写简短验收笔记**（命令 + 结果）  
-- [ ] **Step 2: Commit docs**
+- [x] **Step 1: 写简短验收笔记**（命令 + 结果）  
+- [x] **Step 2: Commit docs**
 
 ```powershell
 git add docs scripts
