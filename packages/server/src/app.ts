@@ -54,7 +54,7 @@ export async function createApp(
   });
 
   // Electron renderer (vite) is http://localhost:5173 while the API is
-  // http://127.0.0.1:8787 — browsers treat that as cross-origin.
+  // http://127.0.0.1:9800 — browsers treat that as cross-origin.
   await app.register(cors, {
     origin: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

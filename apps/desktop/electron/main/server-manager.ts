@@ -1,9 +1,10 @@
 import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 export const DEFAULT_HOST = "127.0.0.1";
-export const DEFAULT_PORT = 8787;
+/** Default API port. Avoid 8741–8940 on Windows (Hyper-V excluded ranges → EACCES). */
+export const DEFAULT_PORT = 9800;
 
 export type ServerState = {
   host: string;
@@ -160,6 +161,33 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Merge repo `.env` into spawn env when keys are not already set (DEV convenience). */
+export function loadRepoDotEnv(repoRoot: string): Record<string, string> {
+  const path = join(repoRoot, ".env");
+  if (!existsSync(path)) {
+    return {};
+  }
+  const out: Record<string, string> = {};
+  for (const rawLine of readFileSync(path, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (key && process.env[key] === undefined) {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 export class ServerManager {
   private child: ChildProcess | null = null;
   private state: ServerState | null = null;
@@ -202,7 +230,12 @@ export class ServerManager {
     const spawnImpl = this.opts.spawnImpl ?? spawn;
     const spawnOpts: SpawnOptions = {
       cwd: plan.cwd,
-      env: { ...process.env, HOST: host, PORT: String(port) },
+      env: {
+        ...process.env,
+        ...loadRepoDotEnv(this.opts.repoRoot),
+        HOST: host,
+        PORT: String(port),
+      },
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
       // .cmd shims (pnpm.cmd) require a shell on Windows.

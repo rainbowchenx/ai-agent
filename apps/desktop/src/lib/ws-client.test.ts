@@ -7,11 +7,11 @@ import {
 
 describe("httpToWsUrl", () => {
   it("maps local http base to /ws", () => {
-    expect(httpToWsUrl("http://127.0.0.1:8787")).toBe(
-      "ws://127.0.0.1:8787/ws",
+    expect(httpToWsUrl("http://127.0.0.1:9800")).toBe(
+      "ws://127.0.0.1:9800/ws",
     );
-    expect(httpToWsUrl("http://127.0.0.1:8787/")).toBe(
-      "ws://127.0.0.1:8787/ws",
+    expect(httpToWsUrl("http://127.0.0.1:9800/")).toBe(
+      "ws://127.0.0.1:9800/ws",
     );
   });
 });

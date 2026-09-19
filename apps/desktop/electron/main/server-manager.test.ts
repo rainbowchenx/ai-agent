@@ -20,7 +20,7 @@ function tempDir(prefix: string): string {
 describe("healthUrl", () => {
   it("points at the local health endpoint", () => {
     expect(healthUrl(DEFAULT_HOST, DEFAULT_PORT)).toBe(
-      "http://127.0.0.1:8787/health",
+      "http://127.0.0.1:9800/health",
     );
   });
 });
@@ -40,18 +40,18 @@ describe("writeServerState", () => {
     const userData = tempDir("agent2026-ud-");
     writeServerState(userData, {
       host: DEFAULT_HOST,
-      port: 8787,
-      baseUrl: "http://127.0.0.1:8787",
+      port: 9800,
+      baseUrl: "http://127.0.0.1:9800",
       reused: true,
     });
     const raw = JSON.parse(readFileSync(join(userData, "server.json"), "utf8"));
-    expect(raw.port).toBe(8787);
-    expect(raw.baseUrl).toBe("http://127.0.0.1:8787");
+    expect(raw.port).toBe(9800);
+    expect(raw.baseUrl).toBe("http://127.0.0.1:9800");
   });
 });
 
 describe("resolveSpawnPlan", () => {
-  it("reuses 8787 in DEV when health already succeeds", () => {
+  it("reuses 9800 in DEV when health already succeeds", () => {
     const plan = resolveSpawnPlan({
       isDev: true,
       repoRoot: "/repo",
@@ -159,11 +159,11 @@ describe("ServerManager", () => {
 
     const state = await manager.start();
     expect(state.reused).toBe(true);
-    expect(state.baseUrl).toBe("http://127.0.0.1:8787");
+    expect(state.baseUrl).toBe("http://127.0.0.1:9800");
     expect(spawnImpl).not.toHaveBeenCalled();
-    expect(manager.getBaseUrl()).toBe("http://127.0.0.1:8787");
+    expect(manager.getBaseUrl()).toBe("http://127.0.0.1:9800");
     const saved = JSON.parse(readFileSync(join(userData, "server.json"), "utf8"));
-    expect(saved.port).toBe(8787);
+    expect(saved.port).toBe(9800);
   });
 
   it("spawns the server and waits until /health is ok", async () => {
@@ -195,6 +195,6 @@ describe("ServerManager", () => {
     expect(state.pid).toBe(99);
     expect(spawnImpl).toHaveBeenCalledOnce();
     const saved = JSON.parse(readFileSync(join(userData, "server.json"), "utf8"));
-    expect(saved.baseUrl).toBe("http://127.0.0.1:8787");
+    expect(saved.baseUrl).toBe("http://127.0.0.1:9800");
   });
 });

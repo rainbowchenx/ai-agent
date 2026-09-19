@@ -7,7 +7,8 @@
     "dev": "turbo run dev --parallel",
     "test": "turbo run test",
     "dev:server": "pnpm --filter @agent2026/server dev",
-    "dev:desktop": "pnpm --filter @agent2026/desktop dev"
+    "dev:desktop": "pnpm --filter @agent2026/desktop dev",
+    "smoke:p0": "pnpm --filter @agent2026/server exec tsx --env-file=../../.env ../../scripts/smoke-p0.ts"
   },
   "devDependencies": {
     "turbo": "^2.5.0",
