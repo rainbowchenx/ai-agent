@@ -1,7 +1,7 @@
 # ask_all 权限确认环 — 设计规格
 
 **日期：** 2026-09-20  
-**状态：** 已确认，待实现  
+**状态：** 已实现于 `feat/ask-all-permission`（待合入 main）  
 **关联：** `2026-09-05-agent-runtime-design.md` §5.2 权限、§7 P2（权限 ask 先行切片）；P1 Trace 已合入  
 **范围说明：** 本切片接通 `ask_all` 的 WS↔UI 确认环；**不含 MCP**（MCP 为后续独立切片）
 
