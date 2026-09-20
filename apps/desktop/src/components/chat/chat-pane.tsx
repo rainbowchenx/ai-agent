@@ -12,6 +12,7 @@ export function ChatPane() {
   const status = useSessionStore((s) => s.run.status);
   const tracePanelOpen = useSessionStore((s) => s.tracePanelOpen);
   const setTracePanelOpen = useSessionStore((s) => s.setTracePanelOpen);
+  const respondPermission = useSessionStore((s) => s.respondPermission);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,7 +52,11 @@ export function ChatPane() {
               item.kind === "tool" ? (
                 <ToolCard key={item.id} item={item} />
               ) : (
-                <MessageBubble key={item.id} item={item} />
+                <MessageBubble
+                  key={item.id}
+                  item={item}
+                  onRespondPermission={respondPermission}
+                />
               ),
             )
           )}

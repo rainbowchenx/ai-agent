@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AppConfig, CredentialInfo } from "@agent2026/shared";
 import {
-  AlertCircle,
   Bot,
   Check,
   Cpu,
@@ -654,12 +653,6 @@ export function SettingsPage() {
                     />
                     <span className="field-hint">
                       每行一个工具名；仅在 allowlist 模式下生效。
-                    </span>
-                  </div>
-                  <div className="alert">
-                    <AlertCircle className="alert-icon" aria-hidden />
-                    <span>
-                      ask_all 确认弹窗与完整权限闸门 UI 将在后续版本完善；此处为设置壳。
                     </span>
                   </div>
                   <div className="action-row">

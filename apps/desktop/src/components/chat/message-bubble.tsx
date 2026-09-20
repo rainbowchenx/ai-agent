@@ -1,10 +1,17 @@
 import type { ChatItem } from "@/lib/apply-run-event";
 import { cn } from "@/lib/utils";
+import { PermissionCard } from "./permission-card";
 
 export function MessageBubble({
   item,
+  onRespondPermission,
 }: {
   item: Extract<ChatItem, { kind: "user" | "assistant" | "error" | "permission" }>;
+  onRespondPermission?: (
+    requestId: string,
+    allow: boolean,
+    scope?: "once" | "session",
+  ) => void;
 }) {
   if (item.kind === "error") {
     return (
@@ -21,19 +28,10 @@ export function MessageBubble({
 
   if (item.kind === "permission") {
     return (
-      <div
-        data-message
-        data-message-kind="permission"
-        data-message-id={item.id}
-        data-request-id={item.requestId}
-        className="rounded-md border px-3 py-2 text-sm"
-      >
-        <div className="text-xs text-muted-foreground">权限请求</div>
-        <div className="font-medium">{item.toolName}</div>
-        <pre className="mt-1 overflow-x-auto text-xs text-muted-foreground">
-          {JSON.stringify(item.arguments, null, 2)}
-        </pre>
-      </div>
+      <PermissionCard
+        item={item}
+        onRespond={onRespondPermission ?? (() => undefined)}
+      />
     );
   }
 
