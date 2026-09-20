@@ -228,6 +228,7 @@ export class Runner {
       toolName: call.name,
       arguments: call.arguments,
       onPermissionRequest: input.onPermissionRequest,
+      isPreAllowed: input.isPreAllowed,
       signal: input.signal,
       onRequest: (request) => {
         emit({

@@ -133,6 +133,67 @@ describe("Runner", () => {
     expect(end?.type === "run_end" && end.reason).toBe("stopped");
   });
 
+  it("skips permission_request when isPreAllowed returns true", async () => {
+    const events: RunnerEvent[] = [];
+    let asked = 0;
+    let executed = 0;
+    let turn = 0;
+    const model: ModelPort = {
+      id: "mock",
+      async *stream() {
+        turn += 1;
+        if (turn === 1) {
+          yield {
+            type: "tool_call",
+            id: "call_echo_pre",
+            name: "echo",
+            arguments: { text: "pre-allowed" },
+          };
+          return;
+        }
+        yield { type: "text_delta", text: "ok" };
+      },
+    };
+
+    const tools = new ToolRegistry();
+    tools.register(
+      {
+        name: "echo",
+        description: "Echo the text argument",
+        parameters: {
+          type: "object",
+          properties: { text: { type: "string" } },
+        },
+      },
+      async (args) => {
+        executed += 1;
+        return String(args.text ?? "");
+      },
+    );
+
+    const runner = new Runner({ maxTurns: 4 });
+    await runner.run({
+      messages: [],
+      userMessage: { role: "user", content: "echo pre-allowed" },
+      model,
+      tools,
+      permissions: { mode: "ask_all", allowlist: [] },
+      isPreAllowed: (name) => name === "echo",
+      onPermissionRequest: async () => {
+        asked += 1;
+        return { allow: true };
+      },
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(asked).toBe(0);
+    expect(eventTypes(events)).not.toContain("permission_request");
+    expect(executed).toBe(1);
+    expect(eventTypes(events)).toContain("tool_start");
+    expect(eventTypes(events)).toContain("tool_end");
+    expect(lastEvent(events)?.type).toBe("run_end");
+  });
+
   it("asks permission via onPermissionRequest Promise in ask_all mode", async () => {
     const events: RunnerEvent[] = [];
     let asked = 0;

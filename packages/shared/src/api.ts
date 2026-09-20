@@ -55,6 +55,7 @@ export type PermissionWsResponse = {
   type: "permission_response";
   requestId: string;
   allow: boolean;
+  scope?: "once" | "session";
 };
 
 export type StopRunResponse = {

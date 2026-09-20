@@ -53,6 +53,7 @@ export interface RunnerRunInput {
   onPermissionRequest?: (
     request: PermissionRequest,
   ) => Promise<PermissionDecision>;
+  isPreAllowed?: (toolName: string) => boolean;
   signal?: AbortSignal;
   sessionId?: string;
   runId?: string;

@@ -30,6 +30,7 @@ export async function evaluatePermission(input: {
   arguments: unknown;
   onPermissionRequest?: (request: PermissionRequest) => Promise<PermissionDecision>;
   onRequest?: (request: PermissionRequest) => void;
+  isPreAllowed?: (toolName: string) => boolean;
   signal?: AbortSignal;
 }): Promise<{ allow: boolean; requestId?: string; aborted?: boolean }> {
   const { policy, toolName } = input;
@@ -39,6 +40,9 @@ export async function evaluatePermission(input: {
   }
 
   if (policy.mode === "ask_all") {
+    if (input.isPreAllowed?.(toolName)) {
+      return { allow: true };
+    }
     const requestId = crypto.randomUUID();
     const request: PermissionRequest = {
       requestId,
