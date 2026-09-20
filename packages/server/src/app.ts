@@ -10,9 +10,11 @@ import {
   defaultCredentialsPath,
 } from "./config/load-config.js";
 import { createCredentialStore } from "./credentials/store.js";
+import { PermissionBroker } from "./permissions/permission-broker.js";
 import { registerConfigRoutes } from "./routes/config.js";
 import { registerCredentialRoutes } from "./routes/credentials.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { PermissionBroker } from "./permissions/permission-broker.js";
 import { registerRunRoutes } from "./routes/runs.js";
 import { registerSessionsRoutes } from "./routes/sessions.js";
 import { registerSystemRoutes } from "./routes/system.js";
@@ -48,6 +50,7 @@ export async function createApp(
   const sessionStore = new SqliteSessionStore(db);
   const tracePort = new SqliteTracePort(db);
   const hub = new RunHub();
+  const permissionBroker = new PermissionBroker();
 
   const app = Fastify({ logger: false });
   app.addHook("onClose", async () => {
@@ -86,6 +89,7 @@ export async function createApp(
     sessionStore,
     tracePort,
     hub,
+    permissionBroker,
     model: options.model,
     workspaceRoot,
     resolveCredential: (ref) => credentials.resolve(ref),

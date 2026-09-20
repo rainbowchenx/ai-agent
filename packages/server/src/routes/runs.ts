@@ -7,6 +7,7 @@ import type {
   WsClientMessage,
 } from "@agent2026/shared";
 import { assembleRuntime } from "../assemble/runtime.js";
+import type { PermissionBroker } from "../permissions/permission-broker.js";
 import type {
   SqliteSessionStore,
 } from "../store/sqlite-session-store.js";
@@ -20,6 +21,7 @@ export type RunRouteDeps = {
   sessionStore: SqliteSessionStore;
   tracePort: SqliteTracePort;
   hub: RunHub;
+  permissionBroker: PermissionBroker;
   model?: ModelPort;
   workspaceRoot: string;
   resolveCredential?: (ref: string) => string | undefined;
@@ -44,6 +46,7 @@ export function registerRunRoutes(
         await reply.code(404).send({ error: "not_found" });
         return;
       }
+      deps.permissionBroker.cancelRun(request.params.runId);
       return { ok: true };
     },
   );
@@ -55,6 +58,7 @@ export function registerRunRoutes(
     ws.on("close", () => {
       for (const runId of socketRuns) {
         deps.hub.abort(runId);
+        deps.permissionBroker.cancelRun(runId);
       }
     });
 
@@ -88,6 +92,17 @@ async function handleClientMessage(
   }
 
   if (parsed.type === "permission_response") {
+    const scope =
+      parsed.allow === false
+        ? "once"
+        : parsed.scope === "session"
+          ? "session"
+          : "once";
+    deps.permissionBroker.respond({
+      requestId: parsed.requestId,
+      allow: parsed.allow,
+      scope,
+    });
     return;
   }
 
@@ -140,6 +155,7 @@ async function startRun(
       ? [{ role: "system", content: runtime.systemPrompt }, ...prior]
       : prior;
 
+    const sessionId = request.sessionId;
     let pendingEnd: Extract<RunnerEvent, { type: "run_end" }> | undefined;
     const result = await runtime.runner.run({
       messages: history,
@@ -147,6 +163,18 @@ async function startRun(
       model: runtime.model,
       tools: runtime.tools,
       permissions: runtime.permissions,
+      isPreAllowed: (toolName) =>
+        deps.permissionBroker.isSessionAllowed(sessionId, toolName),
+      onPermissionRequest: (req) =>
+        deps.permissionBroker.wait(
+          {
+            requestId: req.requestId,
+            sessionId,
+            toolName: req.toolName,
+            runId,
+          },
+          controller.signal,
+        ),
       onEvent: (event: RunnerEvent) => {
         if (event.type === "run_end") {
           pendingEnd = event;
@@ -156,7 +184,7 @@ async function startRun(
         send(socket, toRunEvent(event));
       },
       signal: controller.signal,
-      sessionId: request.sessionId,
+      sessionId,
       runId,
       traceId,
     });
@@ -221,9 +249,14 @@ function isWsClientMessage(value: unknown): value is WsClientMessage {
     );
   }
   if (message.type === "permission_response") {
+    const scopeOk =
+      message.scope === undefined ||
+      message.scope === "once" ||
+      message.scope === "session";
     return (
       typeof message.requestId === "string" &&
-      typeof message.allow === "boolean"
+      typeof message.allow === "boolean" &&
+      scopeOk
     );
   }
   return false;
