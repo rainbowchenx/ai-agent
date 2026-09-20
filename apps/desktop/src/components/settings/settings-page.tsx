@@ -31,43 +31,52 @@ const SECTIONS = [
 
 type SectionId = (typeof SECTIONS)[number]["id"];
 
-type ProviderId = "deepseek" | "openai" | "custom";
+type ProviderId = "openai" | "anthropic" | "custom";
 
 const PROVIDER_PRESETS: Record<
   ProviderId,
-  { label: string; baseUrl: string; apiKeyEnv: string; models: string[] }
+  {
+    label: string;
+    format: "openai_compatible" | "anthropic";
+    baseUrl: string;
+    apiKeyEnv: string;
+    models: string[];
+  }
 > = {
-  deepseek: {
-    label: "DeepSeek",
-    baseUrl: "https://api.deepseek.com/v1",
-    apiKeyEnv: "DEEPSEEK_API_KEY",
-    models: ["deepseek-chat", "deepseek-reasoner"],
-  },
   openai: {
     label: "OpenAI",
+    format: "openai_compatible",
     baseUrl: "https://api.openai.com/v1",
     apiKeyEnv: "OPENAI_API_KEY",
-    models: ["gpt-4o", "gpt-4.1"],
+    models: ["gpt-4.1", "gpt-4o"],
+  },
+  anthropic: {
+    label: "Anthropic",
+    format: "anthropic",
+    baseUrl: "https://api.anthropic.com/v1",
+    apiKeyEnv: "ANTHROPIC_API_KEY",
+    models: ["claude-sonnet-4-5", "claude-3-5-haiku-latest"],
   },
   custom: {
-    label: "Custom openai-compatible",
+    label: "自定义（OpenAI 兼容）",
+    format: "openai_compatible",
     baseUrl: "http://127.0.0.1:11434/v1",
-    apiKeyEnv: "CUSTOM_API_KEY",
+    apiKeyEnv: "OPENAI_API_KEY",
     models: ["local-model"],
   },
 };
 
 function resolveProviderId(config: AppConfig): ProviderId {
   const id = config.providers.default;
-  if (id === "deepseek" || id === "openai" || id === "custom") {
+  if (id === "openai" || id === "anthropic" || id === "custom") {
     return id;
   }
-  return "custom";
+  return "openai";
 }
 
 function entryBaseUrl(config: AppConfig, providerId: string): string {
   const entry = config.providers.entries[providerId];
-  if (entry?.type === "openai_compatible") {
+  if (entry && "baseUrl" in entry && typeof entry.baseUrl === "string") {
     return entry.baseUrl;
   }
   return PROVIDER_PRESETS[providerId as ProviderId]?.baseUrl ?? "";
@@ -126,13 +135,13 @@ export function SettingsPage() {
   const [appearanceHint, setAppearanceHint] = useState<string | null>(null);
 
   // Provider form
-  const [providerId, setProviderId] = useState<ProviderId>("deepseek");
+  const [providerId, setProviderId] = useState<ProviderId>("openai");
   const [providerBaseUrl, setProviderBaseUrl] = useState(
-    PROVIDER_PRESETS.deepseek.baseUrl,
+    PROVIDER_PRESETS.openai.baseUrl,
   );
-  const [apiKeyEnv, setApiKeyEnv] = useState(PROVIDER_PRESETS.deepseek.apiKeyEnv);
+  const [apiKeyEnv, setApiKeyEnv] = useState(PROVIDER_PRESETS.openai.apiKeyEnv);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
-  const [defaultModel, setDefaultModel] = useState("deepseek/deepseek-chat");
+  const [modelName, setModelName] = useState("gpt-4.1");
 
   // Agent form
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -162,7 +171,9 @@ export function SettingsPage() {
     setProviderId(id);
     setProviderBaseUrl(entryBaseUrl(config, id));
     setApiKeyEnv(entryApiKeyEnv(config, id));
-    setDefaultModel(config.agents.default.model);
+    const modelRef = config.agents.default.model;
+    const slash = modelRef.indexOf("/");
+    setModelName(slash > 0 ? modelRef.slice(slash + 1) : modelRef);
     setApiKeyDraft("");
 
     setSystemPrompt(config.agents.default.systemPrompt);
@@ -194,24 +205,10 @@ export function SettingsPage() {
       config ? entryApiKeyEnv(config, id) || preset.apiKeyEnv : preset.apiKeyEnv,
     );
     const models = config ? entryModels(config, id) : preset.models;
-    const modelName = models[0] ?? preset.models[0];
-    setDefaultModel(`${id}/${modelName}`);
+    setModelName(models[0] ?? preset.models[0] ?? "");
     setApiKeyDraft("");
     clearHints();
   };
-
-  const modelOptions = (() => {
-    const fromConfig = config
-      ? Object.entries(config.providers.entries).flatMap(([pid, entry]) =>
-          (entry.models ?? []).map((m) => `${pid}/${m}`),
-        )
-      : [];
-    const fromPresets = (
-      Object.entries(PROVIDER_PRESETS) as [ProviderId, (typeof PROVIDER_PRESETS)[ProviderId]][]
-    ).flatMap(([pid, preset]) => preset.models.map((m) => `${pid}/${m}`));
-    const set = new Set([...fromConfig, ...fromPresets, defaultModel]);
-    return [...set];
-  })();
 
   const credential = credentials[apiKeyEnv];
   const keyFromEnv = credential?.source === "env";
@@ -267,7 +264,7 @@ export function SettingsPage() {
                 <div className="section-header">
                   <h2 className="section-title">模型与 Provider</h2>
                   <p className="section-subtitle">
-                    配置默认模型 Provider、API Key 与基础地址。设置保存后将在下一轮对话生效。
+                    填写 Base URL、模型名和 Token。OpenAI 兼容与 Anthropic 可切换，保存后下一轮对话生效。DeepSeek 等网关用「自定义」。
                   </p>
                 </div>
                 <div className="section-body">
@@ -276,9 +273,9 @@ export function SettingsPage() {
                     <div className="provider-segment" role="radiogroup">
                       {(
                         [
-                          ["deepseek", "DeepSeek"],
                           ["openai", "OpenAI"],
-                          ["custom", "Custom openai-compatible"],
+                          ["anthropic", "Anthropic"],
+                          ["custom", "自定义"],
                         ] as const
                       ).map(([id, label]) => (
                         <button
@@ -297,21 +294,6 @@ export function SettingsPage() {
 
                   <div className="provider-list">
                     <ProviderCard
-                      name="DeepSeek"
-                      meta={
-                        config
-                          ? entryBaseUrl(config, "deepseek") ||
-                            PROVIDER_PRESETS.deepseek.baseUrl
-                          : PROVIDER_PRESETS.deepseek.baseUrl
-                      }
-                      configured={
-                        config
-                          ? isProviderConfigured(config, credentials, "deepseek")
-                          : false
-                      }
-                      onEdit={() => applyProviderPreset("deepseek")}
-                    />
-                    <ProviderCard
                       name="OpenAI"
                       meta={
                         config
@@ -327,12 +309,25 @@ export function SettingsPage() {
                       onEdit={() => applyProviderPreset("openai")}
                     />
                     <ProviderCard
-                      name="Custom"
+                      name="Anthropic"
                       meta={
-                        config?.providers.entries.custom &&
-                        config.providers.entries.custom.type ===
-                          "openai_compatible"
-                          ? config.providers.entries.custom.baseUrl
+                        config
+                          ? entryBaseUrl(config, "anthropic") ||
+                            PROVIDER_PRESETS.anthropic.baseUrl
+                          : PROVIDER_PRESETS.anthropic.baseUrl
+                      }
+                      configured={
+                        config
+                          ? isProviderConfigured(config, credentials, "anthropic")
+                          : false
+                      }
+                      onEdit={() => applyProviderPreset("anthropic")}
+                    />
+                    <ProviderCard
+                      name="自定义"
+                      meta={
+                        config
+                          ? entryBaseUrl(config, "custom") || "未设置"
                           : "未设置"
                       }
                       configured={
@@ -415,75 +410,52 @@ export function SettingsPage() {
                   </div>
 
                   <div className="field-group input-medium">
-                    <label className="field-label" htmlFor="default-model">
-                      默认模型
+                    <label className="field-label" htmlFor="model-name">
+                      模型名
                     </label>
-                    <select
-                      className="select"
-                      id="default-model"
-                      value={defaultModel}
+                    <input
+                      className="text-input"
+                      id="model-name"
+                      value={modelName}
                       onChange={(e) => {
-                        setDefaultModel(e.target.value);
-                        const slash = e.target.value.indexOf("/");
-                        if (slash > 0) {
-                          const pid = e.target.value.slice(0, slash);
-                          if (
-                            pid === "deepseek" ||
-                            pid === "openai" ||
-                            pid === "custom"
-                          ) {
-                            setProviderId(pid);
-                          }
-                        }
+                        setModelName(e.target.value);
                         clearHints();
                       }}
-                    >
-                      {modelOptions.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="action-row">
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      type="button"
-                      onClick={() => applyProviderPreset("deepseek")}
-                    >
-                      填充 DeepSeek 预设
-                    </button>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      type="button"
-                      onClick={() => applyProviderPreset("openai")}
-                    >
-                      填充 OpenAI 预设
-                    </button>
+                      autoComplete="off"
+                      placeholder="gpt-4.1"
+                    />
+                    <span className="field-hint">
+                      保存为 {providerId}/{modelName.trim() || "…"}，工作台可在已保存模型间切换。
+                    </span>
                   </div>
 
                   <div className="action-row">
                     <button
                       className="btn btn-primary"
                       type="button"
-                      disabled={saving || !providerBaseUrl.trim() || !apiKeyEnv.trim()}
+                      disabled={saving || !providerBaseUrl.trim() || !apiKeyEnv.trim() || !modelName.trim()}
                       data-settings-save-provider
                       onClick={() => {
                         if (!baseUrl) {
                           return;
                         }
                         setAppearanceHint(null);
-                        const presetModels = PROVIDER_PRESETS[providerId].models;
+                        const preset = PROVIDER_PRESETS[providerId];
                         const existing = config
                           ? entryModels(config, providerId)
                           : [];
                         void saveProvider(baseUrl, {
                           providerId,
+                          format: preset.format,
                           baseUrl: providerBaseUrl.trim(),
                           apiKeyEnv: apiKeyEnv.trim(),
-                          model: defaultModel,
-                          models: existing.length > 0 ? existing : presetModels,
+                          model: `${providerId}/${modelName.trim()}`,
+                          models:
+                            existing.length > 0
+                              ? existing.includes(modelName.trim())
+                                ? existing
+                                : [...existing, modelName.trim()]
+                              : [modelName.trim()],
                           apiKey: keyFromEnv ? undefined : apiKeyDraft || undefined,
                         }).then(() => setApiKeyDraft(""));
                       }}

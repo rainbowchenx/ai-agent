@@ -15,6 +15,7 @@ import { useSessionStore } from "@/stores/session-store";
 
 export type ProviderSaveInput = {
   providerId: string;
+  format: "openai_compatible" | "anthropic";
   baseUrl: string;
   apiKeyEnv: string;
   model: string;
@@ -133,12 +134,20 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           default: input.providerId,
           entries: {
             ...current.providers.entries,
-            [input.providerId]: {
-              type: "openai_compatible",
-              baseUrl: input.baseUrl,
-              apiKeyEnv: input.apiKeyEnv,
-              models,
-            },
+            [input.providerId]:
+              input.format === "anthropic"
+                ? {
+                    type: "anthropic",
+                    baseUrl: input.baseUrl,
+                    apiKeyEnv: input.apiKeyEnv,
+                    models,
+                  }
+                : {
+                    type: "openai_compatible",
+                    baseUrl: input.baseUrl,
+                    apiKeyEnv: input.apiKeyEnv,
+                    models,
+                  },
           },
         },
         agents: {

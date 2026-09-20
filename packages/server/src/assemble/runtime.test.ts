@@ -52,6 +52,24 @@ describe("assembleRuntime", () => {
     expect(runtime.model).toBe(model);
   });
 
+  it("wires an Anthropic provider from config", async () => {
+    dir = await mkdtemp(join(tmpdir(), "agent2026-runtime-"));
+    const config = defaultAppConfig();
+    config.providers.entries.anthropic = {
+      type: "anthropic",
+      baseUrl: "https://api.anthropic.com/v1",
+      apiKeyEnv: "ANTHROPIC_API_KEY",
+      models: ["claude-sonnet"],
+    };
+    config.agents.default.model = "anthropic/claude-sonnet";
+    const runtime = assembleRuntime({
+      config,
+      workspaceRoot: dir,
+      env: { ANTHROPIC_API_KEY: "sk-ant-test" },
+    });
+    expect(runtime.model.id).toBe("anthropic/claude-sonnet");
+  });
+
   it("throws when the provider api key env is missing", async () => {
     dir = await mkdtemp(join(tmpdir(), "agent2026-runtime-"));
     expect(() =>

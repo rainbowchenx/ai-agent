@@ -12,6 +12,7 @@ const openaiCompatibleProviderSchema = z.object({
 
 const anthropicProviderSchema = z.object({
   type: z.literal("anthropic"),
+  baseUrl: z.string().url(),
   apiKeyEnv: z.string().min(1),
   models: z.array(z.string().min(1)).optional(),
 });

@@ -6,7 +6,7 @@ import {
   type PermissionPolicy,
   type ToolPort,
 } from "@agent2026/core";
-import { createOpenAICompatibleModel } from "@agent2026/providers";
+import { createAnthropicModel, createOpenAICompatibleModel } from "@agent2026/providers";
 import type { AppConfig } from "@agent2026/shared";
 
 export const DEFAULT_MAX_TURNS = 8;
@@ -72,9 +72,6 @@ function createModelFromConfig(
       `Unknown provider "${providerName}" in agents.default.model`,
     );
   }
-  if (entry.type !== "openai_compatible") {
-    throw new Error(`Unsupported provider type: ${entry.type}`);
-  }
 
   const apiKey =
     resolveCredential?.(entry.apiKeyEnv) ?? env[entry.apiKeyEnv];
@@ -82,6 +79,15 @@ function createModelFromConfig(
     throw new Error(
       `Missing API key for ${entry.apiKeyEnv} (credentials file or environment)`,
     );
+  }
+
+  if (entry.type === "anthropic") {
+    return createAnthropicModel({
+      id: modelRef,
+      baseUrl: entry.baseUrl,
+      apiKey,
+      model: modelName,
+    });
   }
 
   return createOpenAICompatibleModel({
