@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工具市场</title>
+    <style id="theme-vars">
+/*
+ * Pinguo design tokens
+ * Brand: Pinguo
+ * Domain: Consumer imaging product
+ * Style: Restrained, elegant, Apple-inspired
+ * Theme mode: light-dark
+ * Source language: zh
+ * Output language: en
+ *
+ * Color architecture (two layers):
+ *   1. Primitive palette - six categories. brand / background / text / icon
+ *      are each a 10-step scale (50 lightest to 900 darkest). state-success and
+ *      state-error are functional colors anchored on Apple system colors.
+ *      Anchors follow Apple Human Interface Guidelines system colors
+ *      (System Blue #007AFF, System Green #34C759, System Red #FF3B30,
+ *      system grays / label / background colors).
+ *   2. Semantic tokens - :root (light) and .dark map roles onto primitives.
+ *      Components and UI kits must only consume the semantic tokens below.
+ */
+
+/* @group-priority: brand, background, text, icon, state-success, state-error */
+
+:root {
+  
+  /* solo-design consumption aliases: explicit prefix for fill-html-head.mjs */
+  --apple-background: var(--background, #ffffff);
+  --apple-foreground: var(--foreground, #0f172a);
+  --apple-card: var(--card, var(--background));
+  --apple-card-foreground: var(--card-foreground, var(--foreground));
+  --apple-popover: var(--popover, var(--card));
+  --apple-popover-foreground: var(--popover-foreground, var(--card-foreground, var(--foreground)));
+  --apple-primary: var(--primary, #111827);
+  --apple-primary-foreground: var(--primary-foreground, #ffffff);
+  --apple-secondary: var(--secondary, var(--muted, var(--card)));
+  --apple-secondary-foreground: var(--secondary-foreground, var(--foreground));
+  --apple-muted: var(--muted, var(--card));
+  --apple-muted-foreground: var(--muted-foreground, var(--foreground));
+  --apple-accent: var(--accent, var(--secondary, var(--muted, var(--card))));
+  --apple-accent-foreground: var(--accent-foreground, var(--foreground));
+  --apple-destructive: var(--destructive, #ef4444);
+  --apple-destructive-foreground: var(--destructive-foreground, #ffffff);
+  --apple-border: var(--border, currentColor);
+  --apple-input: var(--input, var(--border));
+  --apple-ring: var(--ring, var(--primary));
+  --apple-chart-1: var(--chart-1, var(--primary));
+  --apple-chart-2: var(--chart-2, var(--secondary, var(--primary)));
+  --apple-chart-3: var(--chart-3, var(--accent, var(--primary)));
+  --apple-chart-4: var(--chart-4, var(--muted-foreground, var(--foreground)));
+  --apple-chart-5: var(--chart-5, var(--foreground));
+  --apple-sidebar: var(--sidebar, var(--background));
+  --apple-sidebar-foreground: var(--sidebar-foreground, var(--foreground));
+  --apple-sidebar-primary: var(--sidebar-primary, var(--primary));
+  --apple-sidebar-primary-foreground: var(--sidebar-primary-foreground, var(--primary-foreground));
+  --apple-sidebar-accent: var(--sidebar-accent, var(--accent, var(--muted, var(--card))));
+  --apple-sidebar-accent-foreground: var(--sidebar-accent-foreground, var(--accent-foreground, var(--foreground)));
+
+/* ===== PRIMITIVE PALETTE ===== */
+
+  /* brand */
+  --brand-50: #e8f2ff;
+  --brand-100: #cfe5ff;
+  --brand-200: #9fcbff;
+  --brand-300: #66abff;
+  --brand-400: #2e8dff;
+  --brand-500: #007aff; /* @primary */
+  --brand-600: #0064d6;
+  --brand-700: #004fad;
+  --brand-800: #003b82;
+  --brand-900: #00275a;
+
+  /* background */
+  --background-50: #ffffff;
+  --background-100: #f7f7fa;
+  --background-200: #f2f2f7;
+  --background-300: #e5e5ea;
+  --background-400: #d1d1d6;
+  --background-500: #aeaeb2;
+  --background-600: #8e8e93;
+  --background-700: #3a3a3c;
+  --background-800: #1c1c1e;
+  --background-900: #000000;
+
+  /* text */
+  --text-50: #f5f5f7;
+  --text-100: #e3e3e8;
+  --text-200: #c7c7cc;
+  --text-300: #aeaeb2;
+  --text-400: #8e8e93;
+  --text-500: #6e6e73;
+  --text-600: #48484a;
+  --text-700: #3c3c43;
+  --text-800: #1d1d1f;
+  --text-900: #000000;
+
+  /* icon */
+  --icon-50: #f5f5f7;
+  --icon-100: #e5e5ea;
+  --icon-200: #d1d1d6;
+  --icon-300: #c7c7cc;
+  --icon-400: #aeaeb2;
+  --icon-500: #8e8e93;
+  --icon-600: #6e6e73;
+  --icon-700: #48484a;
+  --icon-800: #2c2c2e;
+  --icon-900: #1d1d1f;
+
+  /* state-success */
+  --state-success: #34c759; /* @primary */
+  --state-success-dark: #30d158;
+  --state-success-surface: #e9f9ee;
+  --state-success-foreground: #ffffff;
+
+  /* state-error */
+  --state-error: #ff3b30; /* @primary */
+  --state-error-dark: #ff453a;
+  --state-error-surface: #ffecea;
+  --state-error-foreground: #ffffff;
+
+  /* ===== SEMANTIC ROLES ===== */
+
+  /* semantic */
+  --background: var(--background-50);
+  --foreground: var(--text-800);
+  --card: var(--background-50);
+  --card-foreground: var(--text-800);
+  --popover: var(--background-50);
+  --popover-foreground: var(--text-900);
+
+  --primary: var(--brand-500);
+  --primary-foreground: var(--background-50);
+  --secondary: var(--background-200);
+  --secondary-foreground: var(--text-800);
+  --muted: var(--background-200);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-100);
+  --accent-foreground: var(--text-800);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-300);
+  --input: var(--background-400);
+  --ring: var(--brand-500);
+
+  --icon: var(--icon-900);
+  --icon-muted: var(--icon-500);
+
+  /* chart */
+  --chart-1: var(--state-success);
+  --chart-2: var(--brand-500);
+  --chart-3: #ff9500;
+  --chart-4: #5856d6;
+  --chart-5: #af52de;
+
+  /* sidebar */
+  --sidebar: var(--background-200);
+  --sidebar-foreground: var(--text-800);
+  --sidebar-primary: var(--brand-500);
+  --sidebar-primary-foreground: var(--background-50);
+  --sidebar-accent: var(--background-300);
+  --sidebar-accent-foreground: var(--text-800);
+  --sidebar-border: var(--background-300);
+  --sidebar-ring: var(--brand-500);
+
+  /* TYPOGRAPHY */
+  --font-sans: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-serif: DM Sans, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, monospace;
+  --tracking-normal: 0em;
+
+  /* RADIUS */
+  --radius: 1.2rem;
+  --radius-sm: 0.6rem;
+  --radius-md: 1.2rem;
+  --radius-lg: 1.8rem;
+
+  /* SHADOWS */
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.04); /* Hairline */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04); /* Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.05); /* Card */
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* Raised */
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Card Hover */
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.05); /* Float */
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.10), 0 8px 16px -8px rgba(0, 0, 0, 0.06); /* Overlay */
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.12); /* Modal */
+
+  /* SPACING */
+  --spacing: 0.24rem;
+}
+
+/* ===== SEMANTIC ROLES - dark (primitive palette inherited) ===== */
+.dark {
+  --background: var(--background-900);
+  --foreground: var(--text-50);
+  --card: var(--background-800);
+  --card-foreground: var(--text-50);
+  --popover: var(--background-700);
+  --popover-foreground: var(--text-50);
+
+  --primary: var(--brand-400);
+  --primary-foreground: var(--background-900);
+  --secondary: var(--background-800);
+  --secondary-foreground: var(--text-50);
+  --muted: var(--background-800);
+  --muted-foreground: var(--text-400);
+  --accent: var(--background-700);
+  --accent-foreground: var(--text-50);
+  --destructive: var(--state-error-dark);
+  --destructive-foreground: var(--state-error-foreground);
+  --success: var(--state-success-dark);
+  --success-foreground: var(--state-success-foreground);
+  --border: var(--background-700);
+  --input: var(--background-700);
+  --ring: var(--brand-400);
+
+  --icon: var(--icon-50);
+  --icon-muted: var(--icon-500);
+
+  --chart-1: var(--state-success-dark);
+  --chart-2: var(--brand-400);
+  --chart-3: #ff9f0a;
+  --chart-4: #5e5ce6;
+  --chart-5: #bf5af2;
+
+  --sidebar: var(--background-800);
+  --sidebar-foreground: var(--text-50);
+  --sidebar-primary: var(--brand-400);
+  --sidebar-primary-foreground: var(--background-900);
+  --sidebar-accent: var(--background-700);
+  --sidebar-accent-foreground: var(--text-50);
+  --sidebar-border: var(--background-700);
+  --sidebar-ring: var(--brand-400);
+
+  --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+  --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+}
+
+/* ===== SYSTEM PREFERENCE DARK MODE ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: var(--background-900);
+    --foreground: var(--text-50);
+    --card: var(--background-800);
+    --card-foreground: var(--text-50);
+    --popover: var(--background-700);
+    --popover-foreground: var(--text-50);
+
+    --primary: var(--brand-400);
+    --primary-foreground: var(--background-900);
+    --secondary: var(--background-800);
+    --secondary-foreground: var(--text-50);
+    --muted: var(--background-800);
+    --muted-foreground: var(--text-400);
+    --accent: var(--background-700);
+    --accent-foreground: var(--text-50);
+    --destructive: var(--state-error-dark);
+    --destructive-foreground: var(--state-error-foreground);
+    --success: var(--state-success-dark);
+    --success-foreground: var(--state-success-foreground);
+    --border: var(--background-700);
+    --input: var(--background-700);
+    --ring: var(--brand-400);
+
+    --icon: var(--icon-50);
+    --icon-muted: var(--icon-500);
+
+    --chart-1: var(--state-success-dark);
+    --chart-2: var(--brand-400);
+    --chart-3: #ff9f0a;
+    --chart-4: #5e5ce6;
+    --chart-5: #bf5af2;
+
+    --sidebar: var(--background-800);
+    --sidebar-foreground: var(--text-50);
+    --sidebar-primary: var(--brand-400);
+    --sidebar-primary-foreground: var(--background-900);
+    --sidebar-accent: var(--background-700);
+    --sidebar-accent-foreground: var(--text-50);
+    --sidebar-border: var(--background-700);
+    --sidebar-ring: var(--brand-400);
+
+    --shadow-2xs: 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.36), 0 1px 3px -1px rgba(0, 0, 0, 0.36);
+    --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.36);
+    --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.44), 0 2px 4px -2px rgba(0, 0, 0, 0.36);
+    --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.50), 0 4px 8px -4px rgba(0, 0, 0, 0.40);
+    --shadow-xl: 0 16px 40px -10px rgba(0, 0, 0, 0.55), 0 8px 16px -8px rgba(0, 0, 0, 0.44);
+    --shadow-2xl: 0 24px 64px -12px rgba(0, 0, 0, 0.60);
+  }
+}
+
+    </style>
+    <style id="component-vars">
+/* ═══════════════════════════════════════════════════════════════
+   components.css — Design System Component Definitions
+   Auto-extracted from preview/component-*.html
+   DO NOT EDIT MANUALLY — regenerate via extract-components-css.mjs
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Button ────────────────────────────────────────────────── */
+/* @anatomy
+   <div class="row"><span class="label">Primary 56</span><button class="btn btn-primary btn-lg">Buy now</button><button class="btn btn-primary btn-lg" disabled>Buy now</button></div>
+   <hr class="divider">
+   <div class="row"><span class="label">Secondary 48</span><button class="btn btn-secondary">Shop the latest</button><button class="btn btn-secondary" disabled>Shop the latest</button></div>
+   <div class="row"><span class="label">Text 48</span><button class="btn btn-text">Learn more ›</button><button class="btn btn-text" disabled>Learn more ›</button></div>
+*/
+body{margin:0;padding:12px;background:var(--background);color:var(--foreground);font-family:var(--font-sans);letter-spacing:var(--tracking-normal)}.row{display:flex;align-items:center;gap:calc(var(--spacing)*3);flex-wrap:wrap;margin:0 0 calc(var(--spacing)*3)}.label{min-width:72px;color:var(--muted-foreground);font:600 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase}.btn{display:inline-flex;align-items:center;justify-content:center;gap:calc(var(--spacing)*1.5);height:40px;padding:0 20px;border:none;border-radius:calc(var(--radius)*2);background:transparent;color:var(--foreground);font:600 14px/1 var(--font-sans);letter-spacing:var(--tracking-normal);white-space:nowrap;box-shadow:var(--shadow-sm);cursor:pointer;transition:background-color .18s ease,color .18s ease,opacity .18s ease,filter .18s ease}.btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}.btn:disabled{opacity:.42;cursor:not-allowed}.btn-primary{background:var(--primary);color:var(--primary-foreground)}.btn-primary:hover{filter:brightness(.96)}.btn-secondary{height:48px;padding:0 24px;background:var(--secondary);color:var(--secondary-foreground)}.btn-secondary:hover{background:var(--muted)}.btn-text{height:48px;padding:0 4px;box-shadow:none}.btn-text:hover{color:var(--primary)}.btn-lg{height:56px;padding:0 28px;font-size:16px}.divider{border:0;border-top:1px solid var(--border);margin:calc(var(--spacing)*4) 0}
+
+/* ── Card ──────────────────────────────────────────────────── */
+/* @anatomy
+   <div class="row">
+   <span class="label">Info</span>
+   <article class="card">
+   <div><div class="eyebrow">Pinguo Apple</div><h1 class="title">Built for creators</h1><p class="body-copy">A calm surface for comparing cameras, storage tiers, and bundle benefits across the ecosystem.</p></div>
+   <a class="cta" href="#">Compare models</a>
+   </article>
+   <article class="card disabled" aria-disabled="true">
+   <div><div class="eyebrow">Campus Store</div><h1 class="title">Education pricing</h1><p class="body-copy">Student bundles stay visible while unavailable purchase actions remain clearly disabled.</p></div>
+   <span class="cta">Compare models</span>
+   </article>
+   </div>
+   <hr class="divider">
+   <div class="row">
+   <span class="label">Media</span>
+   <article class="card media-card">
+   <div class="media"></div>
+   <div><div class="meta">Creator bundle</div><h1 class="title">Studio kit with Lens Sync</h1><div class="price">From $799 with Education pricing</div></div>
+   </article>
+   <article class="card media-card dark">
+   <div class="media"></div>
+   <div><div class="meta">Consumer imaging ecosystem</div><h1 class="title">Built for creators</h1><div class="price">Compare models across camera, app, and cloud plans</div></div>
+   </article>
+   </div>
+*/
+body{margin:0;padding:12px;background:var(--background);color:var(--foreground);font:500 14px/1.45 var(--font-sans);letter-spacing:var(--tracking-normal)}.row{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}.label{width:72px;padding-top:10px;color:var(--muted-foreground);font:700 10px/1 var(--font-sans);letter-spacing:.12em;text-transform:uppercase}.divider{margin:12px 0;border:0;border-top:1px solid var(--border)}.card{width:188px;min-height:148px;padding:calc(var(--spacing)*5);display:flex;flex-direction:column;justify-content:space-between;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);transition:transform .18s ease,box-shadow .18s ease}.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}.card.disabled,.card.disabled:hover{opacity:.5;transform:none;box-shadow:var(--shadow-md)}.eyebrow,.meta{color:var(--muted-foreground);font-size:11px;letter-spacing:.08em;text-transform:uppercase}.title{margin:6px 0 8px;font-size:18px;line-height:1.15}.body-copy{margin:0;color:var(--muted-foreground);font-size:13px}.cta{display:inline-flex;align-items:center;justify-content:center;width:max-content;margin-top:12px;padding:calc(var(--spacing)*2) calc(var(--spacing)*3.5);border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:700;text-decoration:none}.media{aspect-ratio:4/3;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--accent));border:1px solid var(--border)}.media-card{min-height:212px;padding:calc(var(--spacing)*4)}.media-card .title{font-size:16px;margin:10px 0 6px}.price{font-size:12px;color:var(--muted-foreground)}.dark{background:var(--card);color:var(--card-foreground)}
+
+/* ── Comparison Table ──────────────────────────────────────── */
+/* @anatomy
+   <div class="row"><span class="label">Default</span><div class="t"><div class="c m">Compare models</div><div class="c h"><span class="k">Mini</span><span class="s">Pinguo Apple</span></div><div class="c h"><span class="k">Air</span><span class="s">Popular</span></div><div class="c h b"><span class="k">Pro</span><span class="s">Creator</span></div><div class="c m">Battery life</div><div class="c v">12h</div><div class="c v">16h</div><div class="c v">20h</div><div class="c m">Storage</div><div class="c v">256GB</div><div class="c v">512GB</div><div class="c v">1TB</div><div class="c m">Camera system</div><div class="c n">Dual</div><div class="c n">48MP</div><div class="c n">48MP+T</div></div><div class="t x" aria-disabled="true"><div class="c m">Compare models</div><div class="c h"><span class="k">Mini</span><span class="s">Pinguo Apple</span></div><div class="c h"><span class="k">Air</span><span class="s">Popular</span></div><div class="c h b"><span class="k">Pro</span><span class="s">Creator</span></div><div class="c m">Battery life</div><div class="c v">12h</div><div class="c v">16h</div><div class="c v">20h</div><div class="c m">Storage</div><div class="c v">256GB</div><div class="c v">512GB</div><div class="c v">1TB</div><div class="c m">Camera system</div><div class="c n">Dual</div><div class="c n">48MP</div><div class="c n">48MP+T</div></div></div>
+   <hr class="divider">
+   <div class="row"><span class="label">Compact</span><div class="t q dark"><div class="c m">Compare models</div><div class="c h"><span class="k">Mini</span></div><div class="c h"><span class="k">Air</span></div><div class="c h b"><span class="k">Pro</span></div><div class="c h"><span class="k">Ultra</span></div><div class="c m">Battery life</div><div class="c v">12h</div><div class="c v">16h</div><div class="c v">20h</div><div class="c v">24h</div><div class="c m">Storage</div><div class="c v">256GB</div><div class="c v">512GB</div><div class="c v">1TB</div><div class="c v">2TB</div><div class="c m">Camera system</div><div class="c n">Dual</div><div class="c n">48MP</div><div class="c n">48MP+T</div><div class="c n">Triple</div></div></div>
+*/
+body{margin:0;padding:12px;background:var(--background);color:var(--foreground);font:500 13px/1.4 var(--font-sans);letter-spacing:var(--tracking-normal)}.row{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:8px}.label{width:72px;padding-top:10px;color:var(--muted-foreground);font:700 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase}.divider{margin:12px 0;border:0;border-top:1px solid var(--border)}.t{display:grid;grid-template-columns:96px repeat(3,1fr);overflow:hidden;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-sm)}.q{grid-template-columns:82px repeat(4,1fr)}.c{padding:10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}.t>.c:nth-child(4n),.q>.c:nth-child(5n){border-right:0}.t>.c:nth-last-child(-n+4),.q>.c:nth-last-child(-n+5){border-bottom:0}.m{background:var(--background);color:var(--muted-foreground);font:700 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase}.h{background:var(--background);font-weight:700}.k{display:block;font-size:14px;line-height:1.1}.s{display:block;margin-top:4px;color:var(--chart-2);font-size:11px;font-weight:700}.b .k{color:var(--chart-2)}.v{font-weight:600}.n{color:var(--muted-foreground);font-size:12px}.x{opacity:.45}
+
+/* ── Input ─────────────────────────────────────────────────── */
+/* @anatomy
+   <div class="row">
+   <span class="label">Search 44</span>
+   <div class="field">
+   <span class="icon">⌕</span>
+   <input class="control" aria-label="Search products" placeholder="Search products">
+   <button class="clear" type="button" aria-label="Clear search">×</button>
+   </div>
+   <div class="field disabled">
+   <span class="icon">⌕</span>
+   <input class="control" aria-label="Search products disabled" placeholder="Search products" disabled>
+   <button class="clear" type="button" aria-label="Clear search disabled" disabled>×</button>
+   </div>
+   </div>
+   <hr class="divider">
+   <div class="row">
+   <span class="label">Dark 40</span>
+   <div class="surface dark">
+   <div class="field small">
+   <input class="control" aria-label="Email address" placeholder="Email address">
+   </div>
+   </div>
+   <div class="surface dark">
+   <div class="field small disabled">
+   <input class="control" aria-label="Track your order disabled" placeholder="Track your order" disabled>
+   </div>
+   </div>
+   </div>
+*/
+body{margin:0;padding:12px;background:var(--background);color:var(--foreground);font:500 13px/1.4 var(--font-sans)}.row{display:flex;align-items:center;gap:calc(var(--spacing)*3);flex-wrap:wrap;margin-bottom:8px}.label{min-width:58px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground)}.divider{border:0;border-top:1px solid var(--border);margin:10px 0}.surface{display:flex;gap:calc(var(--spacing)*2);padding:calc(var(--spacing)*3);border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-sm)}.dark{background:var(--background);color:var(--foreground)}.field{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:240px;height:44px;padding:0 calc(var(--spacing)*3);border:1px solid var(--input);border-radius:var(--radius);background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs)}.field.small{height:40px}.field:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}.field.disabled{opacity:.55}.icon,.clear{padding:0;border:0;background:transparent;color:var(--icon-muted);font:inherit}.icon{font-size:13px}.control{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit}.control::placeholder{color:var(--muted-foreground)}
+
+/* ── Navigation ────────────────────────────────────────────── */
+/* @anatomy
+   <div class="row"><span class="label">Global 44</span><nav class="webbar dark" aria-label="Pinguo Apple global navigation"><span class="brand">Pinguo Apple</span><div class="rail"><a class="link" href="#">Store</a><a class="link" href="#">Explore</a><a class="link" href="#">Community</a><a class="link" href="#">Support</a></div></nav><nav class="webbar dark disabled" aria-label="Pinguo Apple global navigation disabled"><span class="brand">Pinguo Apple</span><div class="rail"><span class="link">Store</span><span class="link">Explore</span><span class="link">Community</span><span class="link">Support</span></div></nav></div>
+   <hr class="divider">
+   <div class="row"><span class="label">Tab Bar</span><div class="mobile"><div class="screen"><nav class="tabbar" aria-label="Pinguo Apple tab bar"><a class="tab" href="#"><span class="dot"></span><span>Store</span></a><a class="tab" href="#"><span class="dot"></span><span>Explore</span></a><a class="tab" href="#"><span class="dot"></span><span>Community</span></a><a class="tab" href="#"><span class="dot"></span><span>Support</span></a></nav></div></div><div class="mobile disabled"><div class="screen"><nav class="tabbar" aria-label="Pinguo Apple tab bar disabled"><span class="tab"><span class="dot"></span><span>Store</span></span><span class="tab"><span class="dot"></span><span>Explore</span></span><span class="tab"><span class="dot"></span><span>Community</span></span><span class="tab"><span class="dot"></span><span>Support</span></span></nav></div></div></div>
+*/
+body{margin:0;padding:12px;background:var(--background);color:var(--foreground);font:500 13px/1.4 var(--font-sans);letter-spacing:var(--tracking-normal)}.row{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:8px}.label{width:72px;padding-top:10px;color:var(--muted-foreground);font:700 10px/1 var(--font-mono);letter-spacing:.12em;text-transform:uppercase}.divider{margin:12px 0;border:0;border-top:1px solid var(--border)}.webbar,.mobile{border:1px solid var(--border);box-shadow:var(--shadow-sm)}.webbar{display:flex;align-items:center;gap:calc(var(--spacing)*2);min-width:320px;height:44px;padding:0 calc(var(--spacing)*3);border-radius:var(--radius);background:var(--sidebar)}.brand{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}.rail{display:flex;gap:calc(var(--spacing)*1.5);margin-left:auto}.link,.tab{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;color:inherit;text-decoration:none;white-space:nowrap;transition:background-color .18s ease,color .18s ease,opacity .18s ease}.link{height:32px;padding:0 calc(var(--spacing)*2.5)}.link:hover,.tab:hover{background:var(--secondary)}.link:focus-visible,.tab:focus-visible{outline:2px solid var(--ring);outline-offset:2px}.dark{background:var(--sidebar);color:var(--foreground)}.disabled{opacity:.48}.disabled .link,.disabled .tab{pointer-events:none}.mobile{padding:calc(var(--spacing)*2);border-radius:calc(var(--radius)*1.1);background:var(--card)}.screen{display:flex;align-items:flex-end;justify-content:center;width:188px;height:164px;padding:calc(var(--spacing)*3);border-radius:calc(var(--radius)*.9);background:linear-gradient(180deg,var(--background),var(--secondary))}.tabbar{display:flex;gap:calc(var(--spacing)*1.5);padding:calc(var(--spacing)*1.5);border:1px solid var(--border);border-radius:999px;background:var(--card);box-shadow:var(--shadow-md)}.tab{flex-direction:column;gap:2px;min-width:56px;height:56px;padding:0 calc(var(--spacing)*1.5);font-size:11px;text-align:center}.dot{width:18px;height:18px;border-radius:999px;background:var(--secondary);box-shadow:inset 0 0 0 1px var(--border)}.tab:hover .dot{background:var(--primary)}
+
+/* ── Product Grid ──────────────────────────────────────────── */
+/* @anatomy
+   <div class="row">
+   <span class="label">4-up</span>
+   <div class="grid grid-4">
+   <article class="card"><div class="media"></div><span class="eyebrow">New this season</span><strong class="title">Pinguo Lens Pro</strong><span class="price">From $999</span><a class="cta" href="/">Compare all models</a></article>
+   <article class="card"><div class="media"></div><span class="eyebrow">Creator kit</span><strong class="title">Pinguo Air Cam</strong><span class="price">From $749</span><a class="cta" href="/">Build your setup</a></article>
+   <article class="card"><div class="media"></div><span class="eyebrow">Studio ready</span><strong class="title">Pinguo Dock One</strong><span class="price">From $299</span><a class="cta" href="/">See accessories</a></article>
+   <article class="card is-disabled"><div class="media"></div><span class="eyebrow">Coming soon</span><strong class="title">Pinguo Vision Mini</strong><span class="price muted">Notify me</span><span class="cta">Unavailable</span></article>
+   </div>
+   </div>
+   <hr class="divider">
+   <div class="row">
+   <span class="label">Story</span>
+   <div class="grid grid-2">
+   <article class="card story"><div class="media"></div><span class="eyebrow">Consumer imaging product ecosystem</span><strong class="title">Travel light with one camera, one dock, and one cloud-ready edit flow.</strong><span class="price muted">Pinguo Apple picks for weekend shoots</span><a class="cta" href="/">Shop the story</a></article>
+   <article class="card story"><div class="media"></div><span class="eyebrow">Compare lineup</span><strong class="title">Choose between compact capture, pro optics, and desktop-grade finishing tools.</strong><span class="price muted">Made for photo-first households</span><a class="cta" href="/">Compare all models</a></article>
+   </div>
+   </div>
+*/
+body{margin:0;padding:12px;background:var(--background);color:var(--foreground);font:500 14px/1.4 var(--font-sans)}.row{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}.label{width:72px;padding-top:6px;color:var(--muted-foreground);font-size:10px;letter-spacing:.12em;text-transform:uppercase;flex:0 0 auto}.grid{display:grid;gap:8px;flex:1}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.card{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);color:var(--card-foreground);box-shadow:var(--shadow-xs);transition:border-color .2s ease,transform .2s ease}.card:hover{border-color:var(--primary);transform:translateY(-1px)}.media{aspect-ratio:1;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,var(--secondary),var(--background));border:1px solid var(--border)}.story .media{aspect-ratio:1.25;background:linear-gradient(135deg,var(--foreground),var(--secondary))}.eyebrow{color:var(--muted-foreground);font-size:10px;letter-spacing:.08em;text-transform:uppercase}.title{font-size:15px;line-height:1.25}.price{font-variant-numeric:tabular-nums}.cta{display:inline-flex;align-self:flex-start;padding:7px 10px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;text-decoration:none}.muted{color:var(--muted-foreground)}.is-disabled{opacity:.55}.divider{margin:10px 0;border:0;border-top:1px solid var(--border)}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --radius-sm: var(--radius-sm);
+    --radius-md: var(--radius-md);
+    --radius-lg: var(--radius-lg);
+  }
+  @layer base {
+    body { background: var(--background); color: var(--foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--background); }
+      .text-background { color: var(--background); }
+      .border-background { border-color: var(--background); }
+      .ring-background { --tw-ring-color: var(--background); }
+      .bg-foreground { background-color: var(--foreground); }
+      .text-foreground { color: var(--foreground); }
+      .border-foreground { border-color: var(--foreground); }
+      .ring-foreground { --tw-ring-color: var(--foreground); }
+      .bg-card { background-color: var(--card); }
+      .text-card { color: var(--card); }
+      .border-card { border-color: var(--card); }
+      .ring-card { --tw-ring-color: var(--card); }
+      .bg-card-foreground { background-color: var(--card-foreground); }
+      .text-card-foreground { color: var(--card-foreground); }
+      .border-card-foreground { border-color: var(--card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--card-foreground); }
+      .bg-popover { background-color: var(--popover); }
+      .text-popover { color: var(--popover); }
+      .border-popover { border-color: var(--popover); }
+      .ring-popover { --tw-ring-color: var(--popover); }
+      .bg-popover-foreground { background-color: var(--popover-foreground); }
+      .text-popover-foreground { color: var(--popover-foreground); }
+      .border-popover-foreground { border-color: var(--popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--popover-foreground); }
+      .bg-primary { background-color: var(--primary); }
+      .text-primary { color: var(--primary); }
+      .border-primary { border-color: var(--primary); }
+      .ring-primary { --tw-ring-color: var(--primary); }
+      .bg-primary-foreground { background-color: var(--primary-foreground); }
+      .text-primary-foreground { color: var(--primary-foreground); }
+      .border-primary-foreground { border-color: var(--primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--primary-foreground); }
+      .bg-secondary { background-color: var(--secondary); }
+      .text-secondary { color: var(--secondary); }
+      .border-secondary { border-color: var(--secondary); }
+      .ring-secondary { --tw-ring-color: var(--secondary); }
+      .bg-secondary-foreground { background-color: var(--secondary-foreground); }
+      .text-secondary-foreground { color: var(--secondary-foreground); }
+      .border-secondary-foreground { border-color: var(--secondary-foreground); }
+      .ring-secondary-foreground { --tw-ring-color: var(--secondary-foreground); }
+      .bg-muted { background-color: var(--muted); }
+      .text-muted { color: var(--muted); }
+      .border-muted { border-color: var(--muted); }
+      .ring-muted { --tw-ring-color: var(--muted); }
+      .bg-muted-foreground { background-color: var(--muted-foreground); }
+      .text-muted-foreground { color: var(--muted-foreground); }
+      .border-muted-foreground { border-color: var(--muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--muted-foreground); }
+      .bg-accent { background-color: var(--accent); }
+      .text-accent { color: var(--accent); }
+      .border-accent { border-color: var(--accent); }
+      .ring-accent { --tw-ring-color: var(--accent); }
+      .bg-accent-foreground { background-color: var(--accent-foreground); }
+      .text-accent-foreground { color: var(--accent-foreground); }
+      .border-accent-foreground { border-color: var(--accent-foreground); }
+      .ring-accent-foreground { --tw-ring-color: var(--accent-foreground); }
+      .bg-destructive { background-color: var(--destructive); }
+      .text-destructive { color: var(--destructive); }
+      .border-destructive { border-color: var(--destructive); }
+      .ring-destructive { --tw-ring-color: var(--destructive); }
+      .bg-destructive-foreground { background-color: var(--destructive-foreground); }
+      .text-destructive-foreground { color: var(--destructive-foreground); }
+      .border-destructive-foreground { border-color: var(--destructive-foreground); }
+      .ring-destructive-foreground { --tw-ring-color: var(--destructive-foreground); }
+      .bg-border { background-color: var(--border); }
+      .text-border { color: var(--border); }
+      .border-border { border-color: var(--border); }
+      .ring-border { --tw-ring-color: var(--border); }
+      .bg-input { background-color: var(--input); }
+      .text-input { color: var(--input); }
+      .border-input { border-color: var(--input); }
+      .ring-input { --tw-ring-color: var(--input); }
+      .bg-ring { background-color: var(--ring); }
+      .text-ring { color: var(--ring); }
+      .border-ring { border-color: var(--ring); }
+      .ring-ring { --tw-ring-color: var(--ring); }
+      .bg-chart-1 { background-color: var(--chart-1); }
+      .text-chart-1 { color: var(--chart-1); }
+      .border-chart-1 { border-color: var(--chart-1); }
+      .ring-chart-1 { --tw-ring-color: var(--chart-1); }
+      .bg-chart-2 { background-color: var(--chart-2); }
+      .text-chart-2 { color: var(--chart-2); }
+      .border-chart-2 { border-color: var(--chart-2); }
+      .ring-chart-2 { --tw-ring-color: var(--chart-2); }
+      .bg-chart-3 { background-color: var(--chart-3); }
+      .text-chart-3 { color: var(--chart-3); }
+      .border-chart-3 { border-color: var(--chart-3); }
+      .ring-chart-3 { --tw-ring-color: var(--chart-3); }
+      .bg-chart-4 { background-color: var(--chart-4); }
+      .text-chart-4 { color: var(--chart-4); }
+      .border-chart-4 { border-color: var(--chart-4); }
+      .ring-chart-4 { --tw-ring-color: var(--chart-4); }
+      .bg-chart-5 { background-color: var(--chart-5); }
+      .text-chart-5 { color: var(--chart-5); }
+      .border-chart-5 { border-color: var(--chart-5); }
+      .ring-chart-5 { --tw-ring-color: var(--chart-5); }
+      .bg-sidebar { background-color: var(--sidebar); }
+      .text-sidebar { color: var(--sidebar); }
+      .border-sidebar { border-color: var(--sidebar); }
+      .ring-sidebar { --tw-ring-color: var(--sidebar); }
+      .bg-sidebar-foreground { background-color: var(--sidebar-foreground); }
+      .text-sidebar-foreground { color: var(--sidebar-foreground); }
+      .border-sidebar-foreground { border-color: var(--sidebar-foreground); }
+      .ring-sidebar-foreground { --tw-ring-color: var(--sidebar-foreground); }
+      .bg-sidebar-primary { background-color: var(--sidebar-primary); }
+      .text-sidebar-primary { color: var(--sidebar-primary); }
+      .border-sidebar-primary { border-color: var(--sidebar-primary); }
+      .ring-sidebar-primary { --tw-ring-color: var(--sidebar-primary); }
+      .bg-sidebar-primary-foreground { background-color: var(--sidebar-primary-foreground); }
+      .text-sidebar-primary-foreground { color: var(--sidebar-primary-foreground); }
+      .border-sidebar-primary-foreground { border-color: var(--sidebar-primary-foreground); }
+      .ring-sidebar-primary-foreground { --tw-ring-color: var(--sidebar-primary-foreground); }
+      .bg-sidebar-accent { background-color: var(--sidebar-accent); }
+      .text-sidebar-accent { color: var(--sidebar-accent); }
+      .border-sidebar-accent { border-color: var(--sidebar-accent); }
+      .ring-sidebar-accent { --tw-ring-color: var(--sidebar-accent); }
+      .bg-sidebar-accent-foreground { background-color: var(--sidebar-accent-foreground); }
+      .text-sidebar-accent-foreground { color: var(--sidebar-accent-foreground); }
+      .border-sidebar-accent-foreground { border-color: var(--sidebar-accent-foreground); }
+      .ring-sidebar-accent-foreground { --tw-ring-color: var(--sidebar-accent-foreground); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+        <style>
+            /* 重置组件脚手架带来的 body 内边距，保证应用壳全屏铺满 */
+            body { margin: 0; padding: 0; }
+
+            /* 应用外壳：左侧边栏 + 右侧主内容 */
+            .app-shell {
+                display: flex;
+                min-height: 100vh;
+                background: var(--apple-background);
+                color: var(--apple-foreground);
+                font-family: var(--font-sans);
+            }
+
+            /* 左侧边栏 */
+            .sidebar {
+                width: 220px;
+                flex-shrink: 0;
+                display: flex;
+                flex-direction: column;
+                padding: 24px 16px;
+                background: var(--apple-sidebar);
+                color: var(--apple-sidebar-foreground);
+                border-right: 1px solid var(--apple-border);
+            }
+
+            .sidebar-brand {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 32px;
+                padding: 0 12px;
+                font-size: 18px;
+                font-weight: 700;
+                letter-spacing: -0.02em;
+            }
+
+            .sidebar-brand .icon {
+                width: 24px;
+                height: 24px;
+                color: var(--apple-primary);
+            }
+
+            .sidebar-nav {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .sidebar-link {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                height: 40px;
+                padding: 0 12px;
+                border-radius: 999px;
+                color: inherit;
+                text-decoration: none;
+                font-size: 14px;
+                transition: background-color 180ms ease, color 180ms ease;
+            }
+
+            .sidebar-link:hover {
+                background: var(--apple-sidebar-accent);
+                color: var(--apple-sidebar-accent-foreground);
+            }
+
+            .sidebar-link:focus-visible {
+                outline: 2px solid var(--apple-ring);
+                outline-offset: 2px;
+            }
+
+            .sidebar-link.active {
+                background: var(--apple-primary);
+                color: var(--apple-primary-foreground);
+            }
+
+            .sidebar-link .icon {
+                width: 18px;
+                height: 18px;
+            }
+
+            /* 主内容区 */
+            .main-area {
+                flex: 1;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* 顶部标题栏 */
+            .page-header {
+                height: 72px;
+                padding: 0 32px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 24px;
+                background: var(--apple-background);
+                border-bottom: 1px solid var(--apple-border);
+            }
+
+            .page-title {
+                font-size: 24px;
+                font-weight: 600;
+                letter-spacing: -0.02em;
+                white-space: nowrap;
+            }
+
+            .header-controls {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                flex: 1;
+                justify-content: flex-end;
+                min-width: 0;
+            }
+
+            /* 搜索输入框 */
+            .search-field {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                width: 280px;
+                height: 40px;
+                padding: 0 14px;
+                border: 1px solid var(--apple-input);
+                border-radius: var(--apple-radius);
+                background: var(--apple-background);
+                box-shadow: var(--shadow-xs);
+                transition: border-color 180ms ease, box-shadow 180ms ease;
+            }
+
+            .search-field:focus-within {
+                border-color: var(--apple-ring);
+                box-shadow: 0 0 0 1px var(--apple-ring);
+            }
+
+            .search-field .icon {
+                width: 16px;
+                height: 16px;
+                color: var(--apple-muted-foreground);
+                flex-shrink: 0;
+            }
+
+            .search-field input {
+                flex: 1;
+                border: 0;
+                outline: 0;
+                background: transparent;
+                color: var(--apple-foreground);
+                font: inherit;
+                font-size: 14px;
+            }
+
+            .search-field input::placeholder {
+                color: var(--apple-muted-foreground);
+            }
+
+            /* 分类筛选胶囊 */
+            .category-pills {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            .pill {
+                height: 32px;
+                padding: 0 16px;
+                border-radius: 999px;
+                border: 1px solid var(--apple-border);
+                background: var(--apple-background);
+                color: var(--apple-foreground);
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+            }
+
+            .pill:hover {
+                background: var(--apple-secondary);
+            }
+
+            .pill:focus-visible {
+                outline: 2px solid var(--apple-ring);
+                outline-offset: 2px;
+            }
+
+            .pill.active {
+                background: var(--apple-primary);
+                color: var(--apple-primary-foreground);
+                border-color: var(--apple-primary);
+            }
+
+            /* 页面内容区 */
+            .page-content {
+                flex: 1;
+                padding: 32px;
+                overflow-y: auto;
+            }
+
+            .section-title {
+                margin: 0 0 20px;
+                font-size: 20px;
+                font-weight: 600;
+                letter-spacing: -0.01em;
+            }
+
+            /* 精选推荐区 */
+            .featured-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+                margin-bottom: 40px;
+            }
+
+            .featured-card {
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                min-height: 180px;
+                padding: 28px;
+                border-radius: var(--apple-radius);
+                border: 1px solid var(--apple-border);
+                background: linear-gradient(135deg, var(--apple-secondary), var(--apple-accent));
+                color: var(--apple-foreground);
+                box-shadow: var(--shadow-md);
+                overflow: hidden;
+                transition: transform 180ms ease, box-shadow 180ms ease;
+            }
+
+            .featured-card:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-lg);
+            }
+
+            .featured-card .badge {
+                display: inline-flex;
+                align-items: center;
+                width: max-content;
+                padding: 6px 12px;
+                border-radius: 999px;
+                background: var(--apple-primary);
+                color: var(--apple-primary-foreground);
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+            }
+
+            .featured-card h3 {
+                margin: 16px 0 8px;
+                font-size: 22px;
+                font-weight: 600;
+                letter-spacing: -0.01em;
+            }
+
+            .featured-card p {
+                margin: 0;
+                max-width: 360px;
+                font-size: 14px;
+                line-height: 1.5;
+                color: var(--apple-muted-foreground);
+            }
+
+            .featured-card .icon-wrap {
+                position: absolute;
+                top: 24px;
+                right: 24px;
+                width: 56px;
+                height: 56px;
+                border-radius: 16px;
+                background: var(--apple-background);
+                color: var(--apple-primary);
+                display: grid;
+                place-items: center;
+                box-shadow: var(--shadow-sm);
+            }
+
+            .featured-card .icon-wrap .icon {
+                width: 28px;
+                height: 28px;
+            }
+
+            /* 工具卡片网格 */
+            .tool-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+
+            .tool-card {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                padding: 24px;
+                border-radius: var(--apple-radius);
+                border: 1px solid var(--apple-border);
+                background: var(--apple-card);
+                color: var(--apple-card-foreground);
+                box-shadow: var(--shadow-sm);
+                transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+            }
+
+            .tool-card:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-md);
+                border-color: var(--apple-primary);
+            }
+
+            .tool-card-header {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 12px;
+            }
+
+            .tool-icon {
+                width: 44px;
+                height: 44px;
+                border-radius: 12px;
+                background: var(--apple-secondary);
+                color: var(--apple-primary);
+                display: grid;
+                place-items: center;
+                flex-shrink: 0;
+            }
+
+            .tool-icon .icon {
+                width: 22px;
+                height: 22px;
+            }
+
+            .tool-category {
+                display: inline-flex;
+                padding: 4px 10px;
+                border-radius: 999px;
+                background: var(--apple-muted);
+                color: var(--apple-muted-foreground);
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.03em;
+                flex-shrink: 0;
+            }
+
+            .tool-card h3 {
+                margin: 0;
+                font-size: 17px;
+                font-weight: 600;
+                letter-spacing: -0.01em;
+            }
+
+            .tool-card p {
+                margin: 0;
+                flex: 1;
+                font-size: 13px;
+                line-height: 1.5;
+                color: var(--apple-muted-foreground);
+            }
+
+            .tool-card-footer {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                margin-top: auto;
+            }
+
+            /* 胶囊按钮 */
+            .btn-add {
+                height: 32px;
+                padding: 0 16px;
+                border-radius: 999px;
+                border: 1px solid var(--apple-primary);
+                background: var(--apple-primary);
+                color: var(--apple-primary-foreground);
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: filter 180ms ease;
+            }
+
+            .btn-add:hover {
+                filter: brightness(1.08);
+            }
+
+            .btn-add:focus-visible {
+                outline: 2px solid var(--apple-ring);
+                outline-offset: 2px;
+            }
+
+            /* 开关切换 */
+            .toggle {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+                font-size: 13px;
+                color: var(--apple-muted-foreground);
+            }
+
+            .toggle input {
+                appearance: none;
+                width: 40px;
+                height: 24px;
+                border-radius: 999px;
+                background: var(--apple-input);
+                position: relative;
+                cursor: pointer;
+                transition: background 180ms ease;
+            }
+
+            .toggle input::after {
+                content: '';
+                position: absolute;
+                left: 2px;
+                top: 2px;
+                width: 20px;
+                height: 20px;
+                border-radius: 999px;
+                background: var(--apple-background);
+                transition: transform 180ms ease;
+            }
+
+            .toggle input:checked {
+                background: var(--apple-primary);
+            }
+
+            .toggle input:checked::after {
+                transform: translateX(16px);
+            }
+
+            .toggle input:focus-visible {
+                outline: 2px solid var(--apple-ring);
+                outline-offset: 2px;
+            }
+
+            /* 响应式：平板双列 */
+            @media (max-width: 1100px) {
+                .tool-grid { grid-template-columns: repeat(2, 1fr); }
+                .featured-grid { grid-template-columns: 1fr; }
+            }
+
+            /* 响应式：移动端堆叠 */
+            @media (max-width: 768px) {
+                .app-shell { flex-direction: column; }
+                .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--apple-border); }
+                .page-header { height: auto; padding: 16px; gap: 12px; flex-wrap: wrap; }
+                .header-controls { flex-direction: column; align-items: stretch; width: 100%; }
+                .search-field { width: 100%; }
+                .category-pills { overflow-x: auto; width: 100%; flex-wrap: nowrap; }
+                .page-content { padding: 20px; }
+                .tool-grid { grid-template-columns: 1fr; }
+            }
+        </style>
+
+        <div class="app-shell">
+            <!-- 左侧边栏 -->
+            <aside class="sidebar" data-dom-id="sidebar" aria-label="主导航">
+                <div class="sidebar-brand">
+                    <i data-lucide="bot" class="icon"></i>
+                    <span>AI Agent</span>
+                </div>
+                <nav class="sidebar-nav">
+                    <a class="sidebar-link" href="#">
+                        <i data-lucide="layout-dashboard" class="icon"></i>
+                        <span>工作台</span>
+                    </a>
+                    <a class="sidebar-link" href="#">
+                        <i data-lucide="clipboard-list" class="icon"></i>
+                        <span>任务中心</span>
+                    </a>
+                    <a class="sidebar-link active" href="#" aria-current="page">
+                        <i data-lucide="puzzle" class="icon"></i>
+                        <span>工具市场</span>
+                    </a>
+                    <a class="sidebar-link" href="#">
+                        <i data-lucide="settings" class="icon"></i>
+                        <span>设置</span>
+                    </a>
+                    <a class="sidebar-link" href="#">
+                        <i data-lucide="help-circle" class="icon"></i>
+                        <span>帮助</span>
+                    </a>
+                </nav>
+            </aside>
+
+            <!-- 右侧主内容 -->
+            <div class="main-area">
+                <!-- 顶部标题栏 -->
+                <header class="page-header" data-dom-id="page-header">
+                    <h1 class="page-title">工具市场</h1>
+                    <div class="header-controls">
+                        <div class="search-field" data-dom-id="search-input">
+                            <i data-lucide="search" class="icon"></i>
+                            <input type="text" placeholder="搜索工具..." aria-label="搜索工具">
+                        </div>
+                        <div class="category-pills" data-dom-id="category-filter" role="group" aria-label="工具分类筛选">
+                            <button class="pill active" type="button" aria-pressed="true">全部</button>
+                            <button class="pill" type="button" aria-pressed="false">生产力</button>
+                            <button class="pill" type="button" aria-pressed="false">开发</button>
+                            <button class="pill" type="button" aria-pressed="false">数据分析</button>
+                            <button class="pill" type="button" aria-pressed="false">创意</button>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- 页面内容 -->
+                <div class="page-content">
+                    <!-- 精选推荐 -->
+                    <section class="featured-section" data-dom-id="featured-section" aria-labelledby="featured-heading">
+                        <h2 class="section-title" id="featured-heading">精选推荐</h2>
+                        <div class="featured-grid">
+                            <article class="featured-card" data-dom-id="featured-card-ai-assistant">
+                                <div>
+                                    <span class="badge">热门</span>
+                                    <h3>智能助手套件</h3>
+                                    <p>集成搜索、日程、邮件的一站式效率工具，让 AI 成为你的工作伙伴。</p>
+                                </div>
+                                <div class="icon-wrap" aria-hidden="true">
+                                    <i data-lucide="sparkles" class="icon"></i>
+                                </div>
+                            </article>
+                            <article class="featured-card" data-dom-id="featured-card-team-collab">
+                                <div>
+                                    <span class="badge">新品</span>
+                                    <h3>团队协作增强</h3>
+                                    <p>会议纪要、文件分析与翻译工具组合，提升团队沟通与知识管理效率。</p>
+                                </div>
+                                <div class="icon-wrap" aria-hidden="true">
+                                    <i data-lucide="zap" class="icon"></i>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
+
+                    <!-- 全部工具 -->
+                    <section class="tool-grid-section" aria-labelledby="all-tools-heading">
+                        <h2 class="section-title" id="all-tools-heading">全部工具</h2>
+                        <div class="tool-grid" data-dom-id="tool-grid">
+                            <article class="tool-card" data-dom-id="tool-card-web-search">
+                                <div class="tool-card-header">
+                                    <div class="tool-icon"><i data-lucide="globe" class="icon"></i></div>
+                                    <span class="tool-category">生产力</span>
+                                </div>
+                                <h3>网页搜索</h3>
+                                <p>实时联网检索，自动汇总多源信息并标注来源。</p>
+                                <div class="tool-card-footer">
+                                    <label class="toggle">
+                                        <input type="checkbox" checked aria-label="启用网页搜索">
+                                        <span>已启用</span>
+                                    </label>
+                                </div>
+                            </article>
+
+                            <article class="tool-card" data-dom-id="tool-card-file-analysis">
+                                <div class="tool-card-header">
+                                    <div class="tool-icon"><i data-lucide="file-text" class="icon"></i></div>
+                                    <span class="tool-category">数据分析</span>
+                                </div>
+                                <h3>文件分析</h3>
+                                <p>解析 PDF、Word、Excel 等文档，提取关键数据与结论。</p>
+                                <div class="tool-card-footer">
+                                    <label class="toggle">
+                                        <input type="checkbox" checked aria-label="启用文件分析">
+                                        <span>已启用</span>
+                                    </label>
+                                </div>
+                            </article>
+
+                            <article class="tool-card" data-dom-id="tool-card-code-generation">
+                                <div class="tool-card-header">
+                                    <div class="tool-icon"><i data-lucide="code" class="icon"></i></div>
+                                    <span class="tool-category">开发</span>
+                                </div>
+                                <h3>代码生成</h3>
+                                <p>根据自然语言描述生成代码片段，支持多语言与单元测试。</p>
+                                <div class="tool-card-footer">
+                                    <button class="btn-add" type="button">添加</button>
+                                </div>
+                            </article>
+
+                            <article class="tool-card" data-dom-id="tool-card-schedule">
+                                <div class="tool-card-header">
+                                    <div class="tool-icon"><i data-lucide="calendar" class="icon"></i></div>
+                                    <span class="tool-category">生产力</span>
+                                </div>
+                                <h3>日程管理</h3>
+                                <p>智能识别待办事项，自动安排日程并发送提醒。</p>
+                                <div class="tool-card-footer">
+                                    <button class="btn-add" type="button">添加</button>
+                                </div>
+                            </article>
+
+                            <article class="tool-card" data-dom-id="tool-card-email">
+                                <div class="tool-card-header">
+                                    <div class="tool-icon"><i data-lucide="mail" class="icon"></i></div>
+                                    <span class="tool-category">生产力</span>
+                                </div>
+                                <h3>邮件助手</h3>
+                                <p>起草、润色与回复邮件，支持多种语气与商务模板。</p>
+                                <div class="tool-card-footer">
+                                    <label class="toggle">
+                                        <input type="checkbox" checked aria-label="启用邮件助手">
+                                        <span>已启用</span>
+                                    </label>
+                                </div>
+                            </article>
+
+                            <article class="tool-card" data-dom-id="tool-card-data-analysis">
+                                <div class="tool-card-header">
+                                    <div class="tool-icon"><i data-lucide="bar-chart-2" class="icon"></i></div>
+                                    <span class="tool-category">数据分析</span>
+                                </div>
+                                <h3>数据分析</h3>
+                                <p>自动清洗表格数据并生成可视化图表与洞察报告。</p>
+                                <div class="tool-card-footer">
+                                    <button class="btn-add" type="button">添加</button>
+                                </div>
+                            </article>
+
+                            <article class="tool-card" data-dom-id="tool-card-image-recognition">
+                                <div class="tool-card-header">
+                                    <div class="tool-icon"><i data-lucide="image" class="icon"></i></div>
+                                    <span class="tool-category">创意</span>
+                                </div>
+                                <h3>图像识别</h3>
+                                <p>识别图片内容、提取文字并生成结构化描述。</p>
+                                <div class="tool-card-footer">
+                                    <button class="btn-add" type="button">添加</button>
+                                </div>
+                            </article>
+
+                            <article class="tool-card" data-dom-id="tool-card-translation">
+                                <div class="tool-card-header">
+                                    <div class="tool-icon"><i data-lucide="languages" class="icon"></i></div>
+                                    <span class="tool-category">创意</span>
+                                </div>
+                                <h3>翻译</h3>
+                                <p>支持多语言互译，保留上下文与专业术语一致性。</p>
+                                <div class="tool-card-footer">
+                                    <label class="toggle">
+                                        <input type="checkbox" aria-label="启用翻译">
+                                        <span>未启用</span>
+                                    </label>
+                                </div>
+                            </article>
+
+                            <article class="tool-card" data-dom-id="tool-card-meeting">
+                                <div class="tool-card-header">
+                                    <div class="tool-icon"><i data-lucide="mic" class="icon"></i></div>
+                                    <span class="tool-category">生产力</span>
+                                </div>
+                                <h3>会议纪要</h3>
+                                <p>实时转录语音并生成会议纪要、待办与关键决策。</p>
+                                <div class="tool-card-footer">
+                                    <button class="btn-add" type="button">添加</button>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>lucide.createIcons();</script>
+</body>
+</html>
