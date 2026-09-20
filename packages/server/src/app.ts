@@ -14,7 +14,6 @@ import { PermissionBroker } from "./permissions/permission-broker.js";
 import { registerConfigRoutes } from "./routes/config.js";
 import { registerCredentialRoutes } from "./routes/credentials.js";
 import { registerHealthRoutes } from "./routes/health.js";
-import { PermissionBroker } from "./permissions/permission-broker.js";
 import { registerRunRoutes } from "./routes/runs.js";
 import { registerSessionsRoutes } from "./routes/sessions.js";
 import { registerSystemRoutes } from "./routes/system.js";
