@@ -1,4 +1,9 @@
-import type { RunEvent, RunWsRequest, WsClientMessage } from "@agent2026/shared";
+import type {
+  PermissionWsResponse,
+  RunEvent,
+  RunWsRequest,
+  WsClientMessage,
+} from "@agent2026/shared";
 
 const RUN_EVENT_TYPES = new Set<RunEvent["type"]>([
   "run_start",
@@ -22,6 +27,19 @@ export function createRunMessage(
   content: string,
 ): RunWsRequest {
   return { type: "run", sessionId, content };
+}
+
+export function createPermissionResponse(
+  requestId: string,
+  allow: boolean,
+  scope?: "once" | "session",
+): PermissionWsResponse {
+  return {
+    type: "permission_response",
+    requestId,
+    allow,
+    ...(allow && scope === "session" ? { scope: "session" } : {}),
+  };
 }
 
 export function parseRunEvent(raw: string): RunEvent | null {
@@ -58,6 +76,14 @@ export class RunSocket {
 
   sendRun(sessionId: string, content: string): void {
     this.sendJson(createRunMessage(sessionId, content));
+  }
+
+  sendPermissionResponse(
+    requestId: string,
+    allow: boolean,
+    scope?: "once" | "session",
+  ): void {
+    this.sendJson(createPermissionResponse(requestId, allow, scope));
   }
 
   sendJson(message: WsClientMessage): void {

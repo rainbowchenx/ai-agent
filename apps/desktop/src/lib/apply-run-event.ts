@@ -21,7 +21,10 @@ export type ChatItem =
       requestId: string;
       toolName: string;
       arguments?: unknown;
+      status: "pending" | "allowed" | "session_allowed" | "denied" | "expired";
     };
+
+export type PermissionResolveStatus = "allowed" | "session_allowed" | "denied";
 
 export type RunStatus = "idle" | "running" | "completed" | "stopped" | "error";
 
@@ -146,6 +149,7 @@ export function applyRunEvent(
         requestId: event.requestId,
         toolName: event.toolName,
         arguments: event.arguments,
+        status: "pending",
       });
       return next;
     case "error":
@@ -162,8 +166,24 @@ export function applyRunEvent(
       if (!next.runId) {
         next.runId = event.runId;
       }
+      expirePendingPermissions(next.items);
       return next;
   }
+}
+
+export function resolvePermissionLocally(
+  state: RunProjection,
+  requestId: string,
+  status: PermissionResolveStatus,
+): RunProjection {
+  return {
+    ...state,
+    items: state.items.map((item) =>
+      item.kind === "permission" && item.requestId === requestId
+        ? { ...item, status }
+        : item,
+    ),
+  };
 }
 
 export function appendUserMessage(
@@ -283,5 +303,14 @@ function finalizeStreaming(items: ChatItem[]): void {
   const last = items[items.length - 1];
   if (last?.kind === "assistant" && last.streaming) {
     items[items.length - 1] = { ...last, streaming: false };
+  }
+}
+
+function expirePendingPermissions(items: ChatItem[]): void {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item?.kind === "permission" && item.status === "pending") {
+      items[i] = { ...item, status: "expired" };
+    }
   }
 }

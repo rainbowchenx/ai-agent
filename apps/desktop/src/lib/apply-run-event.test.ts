@@ -5,6 +5,7 @@ import {
   emptyProjection,
   messagesToChatItems,
   appendUserMessage,
+  resolvePermissionLocally,
   shouldApplyRunEvent,
 } from "./apply-run-event.js";
 
@@ -179,6 +180,86 @@ describe("shouldApplyRunEvent", () => {
         delta: "x",
       }, "s1"),
     ).toBe(false);
+  });
+});
+
+describe("permission projection", () => {
+  it("creates permission_request items with pending status", () => {
+    let state = applyRunEvent(emptyProjection(), {
+      type: "run_start",
+      runId: "r1",
+      sessionId: "s1",
+      traceId: "t1",
+    });
+    state = applyRunEvent(state, {
+      type: "permission_request",
+      runId: "r1",
+      requestId: "req-1",
+      toolName: "read_file",
+      arguments: { path: "a.txt" },
+    });
+
+    expect(state.items).toEqual([
+      {
+        kind: "permission",
+        id: "req-1",
+        requestId: "req-1",
+        toolName: "read_file",
+        arguments: { path: "a.txt" },
+        status: "pending",
+      },
+    ]);
+  });
+
+  it("resolves permission status locally", () => {
+    let state = applyRunEvent(emptyProjection(), {
+      type: "permission_request",
+      runId: "r1",
+      requestId: "req-1",
+      toolName: "read_file",
+      arguments: { path: "a.txt" },
+    });
+
+    state = resolvePermissionLocally(state, "req-1", "allowed");
+    expect(state.items[0]).toMatchObject({ status: "allowed" });
+
+    state = resolvePermissionLocally(state, "req-1", "session_allowed");
+    expect(state.items[0]).toMatchObject({ status: "session_allowed" });
+
+    state = resolvePermissionLocally(state, "req-1", "denied");
+    expect(state.items[0]).toMatchObject({ status: "denied" });
+  });
+
+  it("marks pending permissions as expired on run_end", () => {
+    let state = applyRunEvent(emptyProjection(), {
+      type: "run_start",
+      runId: "r1",
+      sessionId: "s1",
+      traceId: "t1",
+    });
+    state = applyRunEvent(state, {
+      type: "permission_request",
+      runId: "r1",
+      requestId: "req-1",
+      toolName: "read_file",
+      arguments: { path: "a.txt" },
+    });
+    state = applyRunEvent(state, {
+      type: "permission_request",
+      runId: "r1",
+      requestId: "req-2",
+      toolName: "write_file",
+      arguments: { path: "b.txt" },
+    });
+    state = resolvePermissionLocally(state, "req-1", "allowed");
+    state = applyRunEvent(state, {
+      type: "run_end",
+      runId: "r1",
+      reason: "completed",
+    });
+
+    expect(state.items[0]).toMatchObject({ requestId: "req-1", status: "allowed" });
+    expect(state.items[1]).toMatchObject({ requestId: "req-2", status: "expired" });
   });
 });
 

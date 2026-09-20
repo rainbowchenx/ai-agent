@@ -23,6 +23,7 @@ import {
   applyRunEvent,
   emptyProjection,
   projectionFromMessages,
+  resolvePermissionLocally,
   shouldApplyRunEvent,
   type RunProjection,
 } from "@/lib/apply-run-event";
@@ -60,6 +61,11 @@ type SessionStore = {
   selectSession: (id: string) => Promise<void>;
   sendMessage: (content: string) => void;
   stopCurrentRun: () => Promise<void>;
+  respondPermission: (
+    requestId: string,
+    allow: boolean,
+    scope?: "once" | "session",
+  ) => void;
   setTracePanelOpen: (open: boolean) => void;
   selectTraceRun: (runId: string | null) => Promise<void>;
   injectDemoTool: () => void;
@@ -397,6 +403,20 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         error: err instanceof Error ? err.message : String(err),
       });
     }
+  },
+
+  respondPermission: (requestId, allow, scope) => {
+    if (!socket) {
+      return;
+    }
+    socket.sendPermissionResponse(requestId, allow, scope);
+    set((state) => ({
+      run: resolvePermissionLocally(
+        state.run,
+        requestId,
+        !allow ? "denied" : scope === "session" ? "session_allowed" : "allowed",
+      ),
+    }));
   },
 
   setTracePanelOpen: (open) => {
