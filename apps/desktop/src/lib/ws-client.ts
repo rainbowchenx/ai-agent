@@ -67,6 +67,7 @@ export class RunSocket {
   constructor(
     private readonly getBaseUrl: () => string,
     private readonly onEvent: (event: RunEvent) => void,
+    private readonly onDisconnect?: () => void,
   ) {}
 
   connect(): void {
@@ -135,6 +136,7 @@ export class RunSocket {
       if (this.ws !== socket || this.closed) {
         return;
       }
+      this.onDisconnect?.();
       this.reconnectTimer = setTimeout(() => this.open(), 500);
     };
   }

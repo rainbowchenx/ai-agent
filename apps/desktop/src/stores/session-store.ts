@@ -22,6 +22,7 @@ import {
   appendUserMessage,
   applyRunEvent,
   emptyProjection,
+  markRunDisconnected,
   projectionFromMessages,
   resolvePermissionLocally,
   shouldApplyRunEvent,
@@ -162,6 +163,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
             void get().refreshSessions();
             void get().refreshSessionRuns();
           }
+        },
+        () => {
+          set((state) => ({ run: markRunDisconnected(state.run) }));
         },
       );
       socket.connect();
@@ -347,7 +351,19 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   selectSession: async (id) => {
     try {
-      const { baseUrl } = get();
+      const { baseUrl, selectedSessionId, run } = get();
+      if (
+        selectedSessionId &&
+        selectedSessionId !== id &&
+        run.status === "running" &&
+        run.runId
+      ) {
+        try {
+          await stopRun(baseUrl, run.runId);
+        } catch {
+          // Best-effort: still switch session even if stop fails.
+        }
+      }
       const session = await getSession(baseUrl, id);
       set({
         selectedSessionId: id,

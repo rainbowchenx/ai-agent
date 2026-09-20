@@ -3,6 +3,7 @@ import type { MessageDto, RunEvent } from "@agent2026/shared";
 import {
   applyRunEvent,
   emptyProjection,
+  markRunDisconnected,
   messagesToChatItems,
   appendUserMessage,
   resolvePermissionLocally,
@@ -260,6 +261,30 @@ describe("permission projection", () => {
 
     expect(state.items[0]).toMatchObject({ requestId: "req-1", status: "allowed" });
     expect(state.items[1]).toMatchObject({ requestId: "req-2", status: "expired" });
+  });
+
+  it("markRunDisconnected expires pending and stops a running projection", () => {
+    let state = applyRunEvent(emptyProjection(), {
+      type: "run_start",
+      runId: "r1",
+      sessionId: "s1",
+      traceId: "t1",
+    });
+    state = applyRunEvent(state, {
+      type: "permission_request",
+      runId: "r1",
+      requestId: "req-1",
+      toolName: "read_file",
+      arguments: { path: "a.txt" },
+    });
+
+    state = markRunDisconnected(state);
+
+    expect(state.status).toBe("stopped");
+    expect(state.items[0]).toMatchObject({
+      requestId: "req-1",
+      status: "expired",
+    });
   });
 });
 

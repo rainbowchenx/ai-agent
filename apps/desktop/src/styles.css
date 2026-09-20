@@ -1275,7 +1275,7 @@ button.trace-node-summary:hover {
   border: 0;
 }
 
-/* Permission request card (ask_all) 鈥?Figma 16:235 */
+/* Permission request card (ask_all) — Figma 16:235 */
 .permission-card-row {
   --permission-allow: #2e8dff;
   --permission-deny: #ff453a;

@@ -711,6 +711,75 @@ describe("WebSocket run + stop", () => {
     expect(unpairedToolCallAssistants(body.messages)).toEqual([]);
     expect(body.messages.some((m) => m.role === "tool")).toBe(true);
   });
+
+  it("ask_all: WS disconnect while waiting cancels without tool execution", async () => {
+    let turn = 0;
+    const model: ModelPort = {
+      id: "mock-ask-disconnect",
+      async *stream() {
+        turn += 1;
+        if (turn === 1) {
+          yield {
+            type: "tool_call",
+            id: "call_read_disconnect",
+            name: "read_file",
+            arguments: { path: "note.txt" },
+          };
+          return;
+        }
+        yield { type: "text_delta", text: "should not run" };
+      },
+    };
+    const app = await appWithModel(model);
+    await writeFile(join(dir, "note.txt"), "file-body", "utf8");
+    await setAskAll(app);
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/sessions",
+      payload: { title: "ask disconnect" },
+    });
+    const { id: sessionId } = created.json<CreateSessionResponse>();
+
+    const ws = await app.injectWS("/ws");
+    const events: RunEvent[] = [];
+    const permission = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`no permission_request: ${JSON.stringify(events)}`)),
+        3000,
+      );
+      ws.on("message", (data) => {
+        const event = JSON.parse(data.toString()) as RunEvent;
+        events.push(event);
+        if (event.type === "permission_request") {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
+    });
+
+    ws.send(
+      JSON.stringify({
+        type: "run",
+        sessionId,
+        content: "read note",
+      } satisfies WsClientMessage),
+    );
+    await permission;
+    ws.close();
+
+    await new Promise((r) => setTimeout(r, 200));
+
+    expect(events.some((e) => e.type === "tool_start")).toBe(false);
+    expect(events.some((e) => e.type === "tool_end")).toBe(false);
+
+    const session = await app.inject({
+      method: "GET",
+      url: `/sessions/${sessionId}`,
+    });
+    const body = session.json<GetSessionResponse>();
+    expect(body.messages.some((m) => m.role === "tool")).toBe(false);
+  });
 });
 
 async function setAskAll(

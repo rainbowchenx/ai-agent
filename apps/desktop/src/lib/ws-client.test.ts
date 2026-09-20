@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createPermissionResponse,
   createRunMessage,
   httpToWsUrl,
   parseRunEvent,
@@ -44,6 +45,35 @@ describe("createRunMessage", () => {
       type: "run",
       sessionId: "s1",
       content: "hello",
+    });
+  });
+});
+
+describe("createPermissionResponse", () => {
+  it("omits scope for once allow and for deny", () => {
+    expect(createPermissionResponse("req-1", true)).toEqual({
+      type: "permission_response",
+      requestId: "req-1",
+      allow: true,
+    });
+    expect(createPermissionResponse("req-1", true, "once")).toEqual({
+      type: "permission_response",
+      requestId: "req-1",
+      allow: true,
+    });
+    expect(createPermissionResponse("req-1", false, "session")).toEqual({
+      type: "permission_response",
+      requestId: "req-1",
+      allow: false,
+    });
+  });
+
+  it("includes scope only for session allow", () => {
+    expect(createPermissionResponse("req-2", true, "session")).toEqual({
+      type: "permission_response",
+      requestId: "req-2",
+      allow: true,
+      scope: "session",
     });
   });
 });

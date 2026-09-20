@@ -186,6 +186,17 @@ export function resolvePermissionLocally(
   };
 }
 
+/** Expire pending permission cards; if run still "running", mark stopped (WS drop). */
+export function markRunDisconnected(state: RunProjection): RunProjection {
+  const items = state.items.slice();
+  expirePendingPermissions(items);
+  finalizeStreaming(items);
+  if (state.status !== "running") {
+    return { ...state, items };
+  }
+  return { ...state, items, status: "stopped" };
+}
+
 export function appendUserMessage(
   state: RunProjection,
   content: string,
