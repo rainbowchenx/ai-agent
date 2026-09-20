@@ -5,6 +5,14 @@
 **关联：** `2026-09-05-agent-runtime-design.md` §5.2 权限、§7 P2（权限 ask 先行切片）；P1 Trace 已合入  
 **范围说明：** 本切片接通 `ask_all` 的 WS↔UI 确认环；**不含 MCP**（MCP 为后续独立切片）
 
+### UI Reference
+
+| 来源 | 链接 / 路径 | 用途 |
+|------|-------------|------|
+| Figma | [myagent · node `16:235`](https://www.figma.com/design/6mxCXcFGVyupqTTKbZD7GF/myagent?node-id=16-235)（fileKey `6mxCXcFGVyupqTTKbZD7GF`） | 工作台内联「工具权限请求」卡片视觉与文案；实现以该节点为准 |
+
+实现时：功能契约以本文为准；**卡片视觉对齐 Figma**（标题行、副文案、参数块、三按钮描边色）。整页壳（侧栏、问候条等）若与现网不一致，**只改权限卡片及其在对话流中的呈现**，不借机重做整页。
+
 ---
 
 ## 1. 目标与非目标
@@ -101,25 +109,37 @@ tool_call
 
 ## 4. UI / 交互
 
-### 4.1 权限卡片
+对照 Figma `16:235` 中「Permission request card (sample in conversation flow)」。
 
-现有 `message-bubble` 中 `kind === "permission"` 扩展为：
+### 4.1 权限卡片结构
 
-| 元素 | 说明 |
-|------|------|
-| 标题 | 「权限请求」 |
-| 正文 | `toolName` + `arguments` JSON |
-| 按钮 | **允许** / **本会话允许** / **拒绝** |
+挂在对话流内（与 Agent 气泡同列左对齐），不是模态、不是输入框上方条。
+
+| 元素 | Figma / 规格 |
+|------|----------------|
+| 左侧头像 | 盾牌 / 锁图标（圆底） |
+| 标题 | `工具权限请求 · {toolName}`（如 `工具权限请求 · read_file`） |
+| 副文案 | 灰色一行说明。首版可用通用句：「Agent 希望调用该工具以继续完成任务」；内置工具可选用更具体文案（如 `read_file` →「Agent 希望读取本地文件以继续完成任务」）。**不**要求模型生成副文案 |
+| 参数块 | 深底 + 边框的等宽文本区，展示 `arguments`（可读 key/value 或 JSON；过长截断或滚动） |
+| 按钮行 | 三枚等分描边按钮，居中横排： |
+
+按钮视觉（对齐稿）：
+
+| 按钮 | 动作 | 描边 / 字色 |
+|------|------|-------------|
+| **允许** | `allow: true`, `scope: "once"` | 蓝描边 / 蓝字（约 `#2e8dff`） |
+| **本会话允许** | `allow: true`, `scope: "session"` | 灰描边 / 浅字（约 `#3a3a3c` / `#f5f5f7`） |
+| **拒绝** | `allow: false` | 红描边 / 红字（约 `#ff453a`） |
 
 状态机（客户端投影）：
 
 | 状态 | 表现 |
 |------|------|
 | `pending` | 三按钮可用 |
-| `allowed` / `session_allowed` / `denied` | 按钮禁用；文案标结果 |
-| `expired` | 按钮禁用；文案「已失效」（`run_end`、切换会话、未知响应） |
+| `allowed` / `session_allowed` / `denied` | 按钮禁用；可用一行结果文案替代或弱化按钮行 |
+| `expired` | 按钮禁用；文案「已失效」（`run_end`、切换会话） |
 
-点击即发 WS，并立刻切到对应终态（乐观），避免连点。若后续发现 request 已过期，可标 `expired`（可选；首版乐观即可）。
+点击即发 WS，并立刻切到对应终态（乐观），避免连点。
 
 ### 4.2 设置页
 
