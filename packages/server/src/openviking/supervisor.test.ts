@@ -1,0 +1,231 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { defaultAppConfig, type AppConfig } from "@agent2026/shared";
+import { OPENVIKING_MCP_URL, OPENVIKING_SERVER_NAME } from "./constants.js";
+import {
+  createOpenVikingSupervisor,
+  type ChildHandle,
+  type OpenVikingDeps,
+} from "./supervisor.js";
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  while (tempDirs.length > 0) {
+    const dir = tempDirs.pop();
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function tempPaths() {
+  const root = mkdtempSync(join(tmpdir(), "ov-supervisor-"));
+  tempDirs.push(root);
+  return {
+    rootDir: root,
+    confPath: join(root, "ov.conf"),
+    dataDir: join(root, "data"),
+    runtimeProjectDir: join(root, "runtime"),
+  };
+}
+
+function baseConfig(enabled: boolean): AppConfig {
+  const config = defaultAppConfig();
+  if (enabled) {
+    config.mcpServers = {
+      [OPENVIKING_SERVER_NAME]: {
+        transport: "http",
+        url: OPENVIKING_MCP_URL,
+        httpSubtype: "streamable",
+        enabled: true,
+      },
+    };
+  }
+  return config;
+}
+
+function mockChild(): ChildHandle & { killed: boolean } {
+  const handle = {
+    pid: 4242,
+    killed: false,
+    async kill() {
+      handle.killed = true;
+    },
+  };
+  return handle;
+}
+
+type MockedDeps = OpenVikingDeps & {
+  ensureRuntime: ReturnType<typeof vi.fn>;
+  healthCheck: ReturnType<typeof vi.fn>;
+  spawnServer: ReturnType<typeof vi.fn>;
+  writeConfigPreset: ReturnType<typeof vi.fn>;
+  resolveCredential: ReturnType<typeof vi.fn>;
+};
+
+function makeDeps(
+  overrides: {
+    paths?: OpenVikingDeps["paths"];
+    readyTimeoutMs?: number;
+    resolveCredential?: OpenVikingDeps["resolveCredential"];
+    ensureRuntime?: OpenVikingDeps["ensureRuntime"];
+    healthCheck?: OpenVikingDeps["healthCheck"];
+    spawnServer?: OpenVikingDeps["spawnServer"];
+    writeConfigPreset?: OpenVikingDeps["writeConfigPreset"];
+  } = {},
+): MockedDeps {
+  return {
+    paths: overrides.paths ?? tempPaths(),
+    readyTimeoutMs: overrides.readyTimeoutMs ?? 500,
+    resolveCredential: vi.fn(
+      overrides.resolveCredential ?? ((_ref: string) => "sk-test"),
+    ),
+    ensureRuntime: vi.fn(
+      overrides.ensureRuntime ?? (async () => undefined),
+    ),
+    healthCheck: vi.fn(overrides.healthCheck ?? (async () => false)),
+    spawnServer: vi.fn(
+      overrides.spawnServer ?? (async () => mockChild()),
+    ),
+    writeConfigPreset: vi.fn(
+      overrides.writeConfigPreset ??
+        ((_mutate: (c: AppConfig) => AppConfig) => undefined),
+    ),
+  };
+}
+
+describe("OpenVikingSupervisor", () => {
+  it("disabled → stopped and does not call ensureRuntime", async () => {
+    const deps = makeDeps();
+    const supervisor = createOpenVikingSupervisor(deps);
+
+    await supervisor.reconcile(baseConfig(false));
+
+    expect(deps.ensureRuntime).not.toHaveBeenCalled();
+    expect(deps.spawnServer).not.toHaveBeenCalled();
+    expect(supervisor.getStatus()).toMatchObject({
+      status: "stopped",
+      enabled: false,
+      ownedProcess: false,
+      mcpUrl: OPENVIKING_MCP_URL,
+    });
+  });
+
+  it("enabled + no key → needs_config", async () => {
+    const deps = makeDeps({
+      resolveCredential: () => undefined,
+    });
+    const supervisor = createOpenVikingSupervisor(deps);
+
+    await supervisor.reconcile(baseConfig(true));
+
+    expect(deps.ensureRuntime).toHaveBeenCalledOnce();
+    expect(deps.spawnServer).not.toHaveBeenCalled();
+    expect(deps.writeConfigPreset).not.toHaveBeenCalled();
+    expect(supervisor.getStatus()).toMatchObject({
+      status: "needs_config",
+      enabled: true,
+    });
+    expect(supervisor.getStatus().lastError).toMatch(/缺少 Provider API Key/);
+  });
+
+  it("enabled + ensureRuntime throws → error (mentions uv)", async () => {
+    const deps = makeDeps({
+      ensureRuntime: async () => {
+        throw new Error("uv: command not found");
+      },
+    });
+    const supervisor = createOpenVikingSupervisor(deps);
+
+    await supervisor.reconcile(baseConfig(true));
+
+    expect(deps.spawnServer).not.toHaveBeenCalled();
+    const view = supervisor.getStatus();
+    expect(view.status).toBe("error");
+    expect(view.enabled).toBe(true);
+    expect(view.lastError).toMatch(/uv/i);
+  });
+
+  it("enabled + health already true → ready, ownedProcess false, writeConfigPreset", async () => {
+    const deps = makeDeps({
+      healthCheck: async () => true,
+    });
+    const supervisor = createOpenVikingSupervisor(deps);
+
+    await supervisor.reconcile(baseConfig(true));
+
+    expect(deps.spawnServer).not.toHaveBeenCalled();
+    expect(deps.writeConfigPreset).toHaveBeenCalledOnce();
+    const mutate = deps.writeConfigPreset.mock.calls[0]![0] as (
+      c: AppConfig,
+    ) => AppConfig;
+    const next = mutate(baseConfig(true));
+    expect(next.mcpServers?.openviking).toMatchObject({
+      transport: "http",
+      url: OPENVIKING_MCP_URL,
+      httpSubtype: "streamable",
+      enabled: true,
+    });
+    expect(next.agents.default.tools.mcpServers).toContain("openviking");
+    expect(supervisor.getStatus()).toMatchObject({
+      status: "ready",
+      enabled: true,
+      ownedProcess: false,
+      mcpUrl: OPENVIKING_MCP_URL,
+    });
+  });
+
+  it("enabled + health false then spawn+health → ready, ownedProcess true", async () => {
+    let healthy = false;
+    const child = mockChild();
+    const deps = makeDeps({
+      healthCheck: async () => healthy,
+      spawnServer: async () => {
+        healthy = true;
+        return child;
+      },
+    });
+    const supervisor = createOpenVikingSupervisor(deps);
+
+    await supervisor.reconcile(baseConfig(true));
+
+    expect(deps.spawnServer).toHaveBeenCalledOnce();
+    expect(deps.spawnServer).toHaveBeenCalledWith({
+      confPath: deps.paths.confPath,
+      port: 1933,
+    });
+    expect(deps.writeConfigPreset).toHaveBeenCalledOnce();
+    expect(supervisor.getStatus()).toMatchObject({
+      status: "ready",
+      enabled: true,
+      ownedProcess: true,
+    });
+  });
+
+  it("enabled → disabled → kill owned child and stopped", async () => {
+    let healthy = false;
+    const child = mockChild();
+    const deps = makeDeps({
+      healthCheck: async () => healthy,
+      spawnServer: async () => {
+        healthy = true;
+        return child;
+      },
+    });
+    const supervisor = createOpenVikingSupervisor(deps);
+
+    await supervisor.reconcile(baseConfig(true));
+    expect(supervisor.getStatus().ownedProcess).toBe(true);
+    expect(child.killed).toBe(false);
+
+    await supervisor.reconcile(baseConfig(false));
+
+    expect(child.killed).toBe(true);
+    expect(supervisor.getStatus()).toMatchObject({
+      status: "stopped",
+      enabled: false,
+      ownedProcess: false,
+    });
+  });
+});
