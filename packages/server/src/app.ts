@@ -105,6 +105,7 @@ export async function createApp(
       configService.set(next);
     },
   });
+  registerMcpRoutes(app, { mcp });
   registerCredentialRoutes(app, {
     store: credentials,
     getConfig: () => configService.get(),
