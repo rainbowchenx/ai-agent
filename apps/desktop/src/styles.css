@@ -807,6 +807,275 @@ body {
   cursor: pointer;
 }
 
+.mcp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.mcp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.mcp-toolbar-hint {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+
+.mcp-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mcp-empty-text {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.mcp-server-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mcp-server-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  padding: 0;
+  overflow: hidden;
+}
+
+.mcp-server-row.is-disabled {
+  opacity: 0.72;
+}
+
+.mcp-server-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  flex-wrap: wrap;
+}
+
+.mcp-server-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--icon-muted);
+  flex-shrink: 0;
+}
+
+.mcp-server-meta {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.mcp-server-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.mcp-server-title strong {
+  font-weight: 700;
+}
+
+.mcp-server-summary {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+  word-break: break-all;
+}
+
+.mcp-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+}
+
+.mcp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mcp-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 3.5px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.mcp-status-ready {
+  color: var(--success);
+}
+
+.mcp-status-connecting {
+  color: #d4a017;
+}
+
+.mcp-status-error {
+  color: var(--destructive);
+}
+
+.mcp-status-disabled,
+.mcp-status-closed {
+  color: var(--muted-foreground);
+}
+
+.mcp-status-disabled {
+  color: var(--foreground);
+}
+
+.mcp-status-disabled .mcp-status-dot,
+.mcp-status-closed .mcp-status-dot {
+  background: var(--muted-foreground);
+}
+
+.mcp-tool-count {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 4.5rem;
+}
+
+.mcp-tool-count-spacer {
+  visibility: hidden;
+}
+
+.mcp-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--destructive);
+}
+
+.mcp-server-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.mcp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--icon-muted);
+  cursor: pointer;
+}
+
+.mcp-icon-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+  color: var(--foreground);
+}
+
+.mcp-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mcp-tools {
+  margin: 0 16px 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.mcp-tools-meta {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.mcp-tools ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.mcp-form {
+  margin-top: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mcp-form-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .mcp-tool-count-spacer {
+    display: none;
+  }
+
+  .mcp-server-main {
+    align-items: flex-start;
+  }
+
+  .mcp-server-actions {
+    margin-left: auto;
+  }
+}
+
+.field-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 13px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
 .about-list {
   display: flex;
   flex-direction: column;

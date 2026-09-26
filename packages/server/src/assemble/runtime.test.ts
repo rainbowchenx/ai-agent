@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { ModelPort } from "@agent2026/core";
 import { defaultAppConfig } from "@agent2026/shared";
 import { assembleRuntime } from "./runtime.js";
+import type { ToolPort } from "@agent2026/core";
 
 describe("assembleRuntime", () => {
   let dir = "";
@@ -79,5 +80,167 @@ describe("assembleRuntime", () => {
         env: {},
       }),
     ).toThrow(/OPENAI_API_KEY/);
+  });
+
+  it("merges mounted ready MCP ports into ToolPort", async () => {
+    dir = await mkdtemp(join(tmpdir(), "agent2026-runtime-"));
+    const config = defaultAppConfig();
+    config.mcpServers = {
+      svc: {
+        transport: "stdio",
+        command: "npx",
+        args: [],
+        enabled: true,
+      },
+    };
+    config.agents.default.tools.mcpServers = ["svc"];
+
+    const mcpPort: ToolPort = {
+      list: () => [
+        {
+          name: "svc__x",
+          description: "x",
+          parameters: { type: "object", properties: {} },
+        },
+      ],
+      execute: async () => "x",
+    };
+
+    const runtime = assembleRuntime({
+      config,
+      workspaceRoot: dir,
+      model: {
+        id: "injected",
+        async *stream() {
+          yield { type: "text_delta", text: "ok" };
+        },
+      },
+      mcp: {
+        reconcile: async () => undefined,
+        getPort: (name) => (name === "svc" ? mcpPort : undefined),
+        getStatus: () => [
+          {
+            name: "svc",
+            enabled: true,
+            transport: "stdio",
+            status: "ready",
+            toolCount: 1,
+            tools: [{ name: "svc__x" }],
+          },
+        ],
+        refreshTools: async () => undefined,
+        shutdown: async () => undefined,
+      },
+    });
+
+    expect(runtime.tools.list().map((tool) => tool.name)).toEqual([
+      "http_fetch",
+      "read_file",
+      "svc__x",
+    ]);
+  });
+
+  it("excludes disabled or unmounted MCP tools", async () => {
+    dir = await mkdtemp(join(tmpdir(), "agent2026-runtime-"));
+    const config = defaultAppConfig();
+    config.mcpServers = {
+      svc: {
+        transport: "stdio",
+        command: "npx",
+        args: [],
+        enabled: true,
+      },
+    };
+    // not mounted
+    config.agents.default.tools.mcpServers = [];
+
+    const mcpPort: ToolPort = {
+      list: () => [
+        {
+          name: "svc__x",
+          description: "x",
+          parameters: { type: "object", properties: {} },
+        },
+      ],
+      execute: async () => "x",
+    };
+
+    const runtime = assembleRuntime({
+      config,
+      workspaceRoot: dir,
+      model: {
+        id: "injected",
+        async *stream() {
+          yield { type: "text_delta", text: "ok" };
+        },
+      },
+      mcp: {
+        reconcile: async () => undefined,
+        getPort: () => mcpPort,
+        getStatus: () => [
+          {
+            name: "svc",
+            enabled: true,
+            transport: "stdio",
+            status: "ready",
+            toolCount: 1,
+            tools: [{ name: "svc__x" }],
+          },
+        ],
+        refreshTools: async () => undefined,
+        shutdown: async () => undefined,
+      },
+    });
+
+    expect(runtime.tools.list().map((tool) => tool.name)).toEqual([
+      "http_fetch",
+      "read_file",
+    ]);
+  });
+
+  it("continues with builtins when mounted MCP ports are all errors", async () => {
+    dir = await mkdtemp(join(tmpdir(), "agent2026-runtime-"));
+    const config = defaultAppConfig();
+    config.mcpServers = {
+      broken: {
+        transport: "http",
+        url: "http://127.0.0.1:9/mcp",
+        enabled: true,
+      },
+    };
+    config.agents.default.tools.mcpServers = ["broken"];
+
+    const runtime = assembleRuntime({
+      config,
+      workspaceRoot: dir,
+      model: {
+        id: "injected",
+        async *stream() {
+          yield { type: "text_delta", text: "ok" };
+        },
+      },
+      mcp: {
+        reconcile: async () => undefined,
+        getPort: () => undefined,
+        getStatus: () => [
+          {
+            name: "broken",
+            enabled: true,
+            transport: "http",
+            status: "error",
+            toolCount: 0,
+            tools: [],
+            lastError: "unreachable",
+          },
+        ],
+        refreshTools: async () => undefined,
+        shutdown: async () => undefined,
+      },
+    });
+
+    expect(runtime.tools.list().map((tool) => tool.name)).toEqual([
+      "http_fetch",
+      "read_file",
+    ]);
   });
 });

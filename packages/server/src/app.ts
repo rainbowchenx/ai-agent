@@ -10,10 +10,12 @@ import {
   defaultCredentialsPath,
 } from "./config/load-config.js";
 import { createCredentialStore } from "./credentials/store.js";
+import { createMcpSupervisor, type McpSupervisor } from "./mcp/supervisor.js";
 import { PermissionBroker } from "./permissions/permission-broker.js";
 import { registerConfigRoutes } from "./routes/config.js";
 import { registerCredentialRoutes } from "./routes/credentials.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerMcpRoutes } from "./routes/mcp.js";
 import { registerRunRoutes } from "./routes/runs.js";
 import { registerSessionsRoutes } from "./routes/sessions.js";
 import { registerSystemRoutes } from "./routes/system.js";
@@ -32,6 +34,10 @@ export type CreateAppOptions = {
   /** Injected for tests so CI does not need a real API key. */
   model?: ModelPort;
   workspaceRoot?: string;
+  /** Injected MCP supervisor (tests); default creates a real one. */
+  mcp?: McpSupervisor;
+  /** Skip initial MCP reconcile (tests that do not need MCP). */
+  skipMcpReconcile?: boolean;
 };
 
 export async function createApp(
@@ -50,9 +56,30 @@ export async function createApp(
   const tracePort = new SqliteTracePort(db);
   const hub = new RunHub();
   const permissionBroker = new PermissionBroker();
+  const mcp = options.mcp ?? createMcpSupervisor();
+
+  if (!options.skipMcpReconcile) {
+    await mcp.reconcile(configService.get()).catch((error) => {
+      console.warn(
+        "[mcp] initial reconcile failed:",
+        error instanceof Error ? error.message : error,
+      );
+    });
+  }
+
+  const unsubscribeConfig = configService.onChange((config) => {
+    void mcp.reconcile(config).catch((error) => {
+      console.warn(
+        "[mcp] reconcile after config change failed:",
+        error instanceof Error ? error.message : error,
+      );
+    });
+  });
 
   const app = Fastify({ logger: false });
   app.addHook("onClose", async () => {
+    unsubscribeConfig();
+    await mcp.shutdown().catch(() => undefined);
     db.close();
   });
 
@@ -78,6 +105,7 @@ export async function createApp(
       configService.set(next);
     },
   });
+  registerMcpRoutes(app, { mcp });
   registerCredentialRoutes(app, {
     store: credentials,
     getConfig: () => configService.get(),
@@ -92,8 +120,18 @@ export async function createApp(
     model: options.model,
     workspaceRoot,
     resolveCredential: (ref) => credentials.resolve(ref),
+    mcp,
   });
   registerTraceRoutes(app, { sessionStore, tracePort });
 
+  // Expose for status routes (Task 6) and tests.
+  app.decorate("mcpSupervisor", mcp);
+
   return app;
+}
+
+declare module "fastify" {
+  interface FastifyInstance {
+    mcpSupervisor: McpSupervisor;
+  }
 }

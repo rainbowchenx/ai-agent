@@ -91,3 +91,32 @@ export type GetRunTraceResponse = {
 };
 
 export type WsClientMessage = RunWsRequest | PermissionWsResponse;
+
+export type McpServerStatus =
+  | "connecting"
+  | "ready"
+  | "error"
+  | "closed"
+  | "disabled";
+
+export type McpToolStatusView = {
+  name: string;
+  description?: string;
+};
+
+export type McpServerStatusView = {
+  name: string;
+  enabled: boolean;
+  transport: "stdio" | "http";
+  status: McpServerStatus;
+  toolCount: number;
+  tools: McpToolStatusView[];
+  lastError?: string;
+};
+
+export type ListMcpStatusResponse = McpServerStatusView[];
+
+export type RefreshMcpResponse = {
+  ok: true;
+  status: McpServerStatusView;
+};

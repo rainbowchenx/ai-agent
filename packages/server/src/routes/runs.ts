@@ -8,6 +8,7 @@ import type {
 } from "@agent2026/shared";
 import { assembleRuntime } from "../assemble/runtime.js";
 import type { PermissionBroker } from "../permissions/permission-broker.js";
+import type { McpSupervisor } from "../mcp/supervisor.js";
 import type {
   SqliteSessionStore,
 } from "../store/sqlite-session-store.js";
@@ -25,6 +26,7 @@ export type RunRouteDeps = {
   model?: ModelPort;
   workspaceRoot: string;
   resolveCredential?: (ref: string) => string | undefined;
+  mcp?: McpSupervisor;
 };
 
 type WsSocket = {
@@ -149,6 +151,7 @@ async function startRun(
       workspaceRoot: deps.workspaceRoot,
       model: deps.model,
       resolveCredential: deps.resolveCredential,
+      mcp: deps.mcp,
     });
 
     const history: AgentMessage[] = runtime.systemPrompt

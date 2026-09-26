@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@agent2026/core": "workspace:*",
+    "@agent2026/mcp": "workspace:^",
     "@agent2026/providers": "workspace:*",
     "@agent2026/shared": "workspace:*",
     "@fastify/cors": "^11.3.0",

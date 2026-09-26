@@ -6,8 +6,10 @@ import type {
   GetSessionResponse,
   HealthResponse,
   ListCredentialsResponse,
+  ListMcpStatusResponse,
   ListSessionRunsResponse,
   ListSessionsResponse,
+  RefreshMcpResponse,
   StopRunResponse,
   SystemPathsResponse,
 } from "@agent2026/shared";
@@ -159,4 +161,29 @@ export async function getRunTrace(
     throw new Error(`get run trace ${res.status}`);
   }
   return (await res.json()) as GetRunTraceResponse;
+}
+
+export async function fetchMcpStatus(
+  baseUrl: string,
+): Promise<ListMcpStatusResponse> {
+  const res = await fetch(`${baseUrl}/mcp/status`);
+  if (!res.ok) {
+    throw new Error(`mcp status ${res.status}`);
+  }
+  return (await res.json()) as ListMcpStatusResponse;
+}
+
+export async function refreshMcpServer(
+  baseUrl: string,
+  serverName: string,
+): Promise<RefreshMcpResponse> {
+  const res = await fetch(
+    `${baseUrl}/mcp/${encodeURIComponent(serverName)}/refresh`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`mcp refresh ${res.status}${text ? ` — ${text}` : ""}`);
+  }
+  return (await res.json()) as RefreshMcpResponse;
 }
