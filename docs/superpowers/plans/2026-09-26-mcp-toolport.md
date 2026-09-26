@@ -10,6 +10,16 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-26-mcp-toolport-design.md`（**已确认**；Q1–Q8 已锁定）
 
+## UI Reference
+
+| 项 | 值 |
+|----|-----|
+| Figma | https://www.figma.com/design/6mxCXcFGVyupqTTKbZD7GF/myagent?node-id=19-3 |
+| `fileKey` | `6mxCXcFGVyupqTTKbZD7GF` |
+| 整页 `nodeId` | `19:3` |
+| MCP 分区 `nodeId` | `19:379`（Section E: MCP） |
+| 对齐范围 | Desktop 设置 → MCP 列表/工具栏视觉；CRUD / enabled / status / 工具展开 / stdio·http 表单字段语义不变；不重做设置壳与后端 |
+
 ## Learning goals（本切片带走）
 
 1. MCP Client 与 `ToolPort` 适配：SDK session → `list`/`callTool` → 命名空间。  

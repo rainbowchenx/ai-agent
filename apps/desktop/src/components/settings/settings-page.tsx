@@ -743,7 +743,7 @@ export function SettingsPage() {
                 <div className="section-header">
                   <h2 className="section-title">MCP</h2>
                   <p className="section-subtitle">
-                    通过 MCP 接入本地与远程工具服务。
+                    Model Context Protocol 服务器配置。
                   </p>
                 </div>
                 <div className="section-body">

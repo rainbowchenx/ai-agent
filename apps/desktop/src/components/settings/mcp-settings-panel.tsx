@@ -1,6 +1,16 @@
 import { useMemo, useState } from "react";
 import type { AppConfig, McpServerConfig, McpServerStatusView } from "@agent2026/shared";
-import { Puzzle, RefreshCw, Trash2 } from "lucide-react";
+import {
+  Box,
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  Pencil,
+  Plus,
+  Puzzle,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
 
 type McpFormState = {
@@ -35,15 +45,15 @@ const EMPTY_FORM: McpFormState = {
 function statusLabel(status: McpServerStatusView["status"]): string {
   switch (status) {
     case "ready":
-      return "就绪";
+      return "ready";
     case "connecting":
-      return "连接中";
+      return "connecting";
     case "error":
-      return "错误";
+      return "error";
     case "disabled":
-      return "已禁用";
+      return "disabled";
     case "closed":
-      return "已关闭";
+      return "closed";
     default:
       return status;
   }
@@ -204,6 +214,23 @@ export function McpSettingsPanel({
     setFormOpen(true);
   };
 
+  const refreshToolLists = async () => {
+    const enabledNames = servers
+      .filter(([, serverConfig]) => serverConfig.enabled)
+      .map(([name]) => name);
+    if (enabledNames.length === 0) {
+      await refreshMcpStatus(baseUrl);
+      return;
+    }
+    for (const name of enabledNames) {
+      try {
+        await refreshMcpTools(baseUrl, name);
+      } catch {
+        // Continue remaining servers; store already records the error.
+      }
+    }
+  };
+
   const onSave = async () => {
     const name = form.name.trim();
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
@@ -233,32 +260,33 @@ export function McpSettingsPanel({
 
   return (
     <div className="mcp-panel">
-      <p className="helper-text" style={{ marginTop: 0 }}>
-        可添加本地 stdio 或远程 HTTP MCP。禁用后立即断开，且不会提供给 Agent。
-        敏感 HTTP headers 在展示时会掩码；优先使用密钥引用。
-      </p>
-
-      <div className="action-row" style={{ marginBottom: 12 }}>
-        <button className="btn btn-primary" type="button" onClick={openCreate}>
-          添加 MCP
-        </button>
-        <button
-          className="btn btn-ghost"
-          type="button"
-          disabled={saving || !baseUrl}
-          onClick={() => void refreshMcpStatus(baseUrl)}
-        >
-          <RefreshCw width={14} height={14} aria-hidden />
-          刷新状态
-        </button>
+      <div className="mcp-toolbar">
+        <p className="mcp-toolbar-hint">
+          禁用后立即断开，且不会提供给 Agent。
+        </p>
+        <div className="mcp-toolbar-actions">
+          <button
+            className="btn btn-secondary"
+            type="button"
+            disabled={saving || !baseUrl}
+            onClick={() => void refreshToolLists()}
+          >
+            <RefreshCw width={14} height={14} aria-hidden />
+            刷新工具列表
+          </button>
+          <button className="btn btn-primary" type="button" onClick={openCreate}>
+            <Plus width={14} height={14} aria-hidden />
+            添加 MCP
+          </button>
+        </div>
       </div>
 
       {servers.length === 0 && !formOpen ? (
         <div className="mcp-card">
           <Puzzle width={20} height={20} aria-hidden />
           <div>
-            <p style={{ margin: "0 0 8px", fontSize: 14 }}>
-              尚未配置 MCP Server。添加后可在此查看连接状态与发现的工具。
+            <p className="mcp-empty-text">
+              尚未配置 MCP Server。可添加本地 stdio 或远程 HTTP MCP，添加后可在此查看连接状态与发现的工具。
             </p>
             <button type="button" className="mcp-link" onClick={openCreate}>
               添加第一个 MCP
@@ -270,34 +298,51 @@ export function McpSettingsPanel({
       <ul className="mcp-server-list">
         {servers.map(([name, serverConfig]) => {
           const status = statusByName.get(name);
+          const resolvedStatus = serverConfig.enabled
+            ? (status?.status ?? "closed")
+            : "disabled";
           const isExpanded = expanded === name;
+          const TransportIcon =
+            serverConfig.transport === "http" ? Globe : Box;
+          const showToolCount =
+            resolvedStatus === "ready" && status != null;
+
           return (
             <li
               key={name}
               className={`mcp-server-row${serverConfig.enabled ? "" : " is-disabled"}`}
             >
               <div className="mcp-server-main">
+                <div className="mcp-server-icon" aria-hidden>
+                  <TransportIcon width={18} height={18} />
+                </div>
                 <div className="mcp-server-meta">
                   <div className="mcp-server-title">
                     <strong>{name}</strong>
-                    <span className="mcp-badge">{serverConfig.transport}</span>
-                    <span
-                      className={`mcp-status mcp-status-${status?.status ?? "closed"}`}
-                    >
-                      {status ? statusLabel(status.status) : "未知"}
+                    <span className="mcp-badge">
+                      {serverConfig.transport.toUpperCase()}
                     </span>
                   </div>
                   <div className="mcp-server-summary">
                     {summarizeServer(serverConfig)}
-                    {mounted.has(name) ? " · 已挂载 Agent" : " · 未挂载"}
-                    {status
-                      ? ` · ${status.toolCount} 个工具`
-                      : null}
                   </div>
-                  {status?.lastError ? (
+                  {status?.lastError && resolvedStatus === "error" ? (
                     <div className="mcp-error">{status.lastError}</div>
                   ) : null}
                 </div>
+                <div
+                  className={`mcp-status-pill mcp-status-${resolvedStatus}`}
+                >
+                  <span className="mcp-status-dot" aria-hidden />
+                  <span>{statusLabel(resolvedStatus)}</span>
+                </div>
+                {showToolCount ? (
+                  <div className="mcp-tool-count">
+                    {status.toolCount} 个工具
+                  </div>
+                ) : (
+                  <div className="mcp-tool-count mcp-tool-count-spacer" aria-hidden />
+                )}
                 <div className="mcp-server-actions">
                   <label className="switch" aria-label={`启用 ${name}`}>
                     <input
@@ -312,31 +357,15 @@ export function McpSettingsPanel({
                   </label>
                   <button
                     type="button"
-                    className="btn btn-ghost"
-                    disabled={saving || !serverConfig.enabled}
-                    onClick={() => void refreshMcpTools(baseUrl, name)}
-                  >
-                    刷新工具
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() =>
-                      setExpanded(isExpanded ? null : name)
-                    }
-                  >
-                    {isExpanded ? "收起工具" : "展开工具"}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
+                    className="mcp-icon-btn"
+                    aria-label={`编辑 ${name}`}
                     onClick={() => openEdit(name, serverConfig)}
                   >
-                    编辑
+                    <Pencil width={15} height={15} />
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost"
+                    className="mcp-icon-btn"
                     disabled={saving}
                     aria-label={`删除 ${name}`}
                     onClick={() => {
@@ -349,18 +378,34 @@ export function McpSettingsPanel({
                       }
                     }}
                   >
-                    <Trash2 width={14} height={14} />
+                    <Trash2 width={15} height={15} />
+                  </button>
+                  <button
+                    type="button"
+                    className="mcp-icon-btn"
+                    aria-label={isExpanded ? `收起 ${name} 工具` : `展开 ${name} 工具`}
+                    aria-expanded={isExpanded}
+                    onClick={() => setExpanded(isExpanded ? null : name)}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp width={16} height={16} />
+                    ) : (
+                      <ChevronDown width={16} height={16} />
+                    )}
                   </button>
                 </div>
               </div>
               {isExpanded ? (
                 <div className="mcp-tools">
+                  <div className="mcp-tools-meta">
+                    {mounted.has(name) ? "已挂载到当前 Agent" : "未挂载到当前 Agent"}
+                  </div>
                   {!serverConfig.enabled ? (
                     <p className="helper-text">已禁用，未连接。</p>
                   ) : status?.status === "error" ? (
                     <p className="helper-text">
                       连接失败：{status.lastError ?? "未知错误"}。请检查
-                      command/URL/鉴权后刷新。
+                      command/URL/鉴权后刷新工具列表。
                     </p>
                   ) : status?.tools.length ? (
                     <ul>
@@ -588,7 +633,7 @@ export function McpSettingsPanel({
               保存
             </button>
             <button
-              className="btn btn-ghost"
+              className="btn btn-secondary"
               type="button"
               onClick={() => setFormOpen(false)}
             >

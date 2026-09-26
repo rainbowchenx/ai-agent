@@ -4,6 +4,14 @@
 **规格：** `docs/superpowers/specs/2026-09-26-mcp-toolport-design.md`  
 **计划：** `docs/superpowers/plans/2026-09-26-mcp-toolport.md`
 
+## UI Reference
+
+| 项 | 值 |
+|----|-----|
+| Figma | https://www.figma.com/design/6mxCXcFGVyupqTTKbZD7GF/myagent?node-id=19-3 |
+| 分区节点 | `19:379`（Section E: MCP；整页 `19:3`） |
+| 对齐说明 | 仅精调设置中心 **MCP** 分区：工具栏（刷新工具列表 / 添加 MCP）、server 行（类型 icon、STDIO/HTTP badge、摘要、色点状态、工具数、开关、编辑/删除/展开）。表单仍保留规格字段（stdio/http、启用、挂载 Agent）；稿未单独出表单帧。不改设置壳与 MCP 后端契约。 |
+
 ## 架构走读（带走）
 
 1. **官方 SDK 只在 `packages/mcp`**  
