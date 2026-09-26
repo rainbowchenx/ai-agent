@@ -228,6 +228,6 @@ tool_call
 
 ## 9. 后续（不在本切片）
 
-- P2 余下：MCP 多 server + `server__tool` 命名空间
+- P2 余下：MCP 多 server + `server__tool` 命名空间 → 见 `2026-09-26-mcp-toolport-design.md`
 - `default` 模式对写/网络/MCP 的询问策略
 - 豁免持久化（若产品需要）

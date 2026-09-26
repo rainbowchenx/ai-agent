@@ -1,7 +1,7 @@
 # Agent Runtime + Electron 工作台 — 设计规格
 
 **日期：** 2026-09-05  
-**状态：** 已确认；**P0 已在分支 `feat/p0-mvp` 实现**（验收见 `docs/learning/P0-REVIEW.md`）。自动化测试通过；Electron 全链路 + 真实 API Key 对话待本机手工冒烟。长期记忆候选：**OpenViking via MCP**（§6.5）。P1 起：第二 Provider、配置 UI、Trace 面板。  
+**状态：** 已确认；P0–P1（Provider / 设置 / Trace）与 ask_all 权限环已在 `main`。长期记忆候选：**OpenViking via MCP**（§6.5）。**P2 MCP：** 规格已确认 — `2026-09-26-mcp-toolport-design.md`；计划 `plans/2026-09-26-mcp-toolport.md`（本总规 §4/§7 仍为准绳）。  
 **定位：** 可插拔 Agent Runtime / 框架；桌面端为第一成品形态
 
 ---
@@ -331,7 +331,7 @@ a2a:
 |------|------|----------|------------|
 | **P0 MVP** | 自研 loop + OpenAI 兼容 Provider + 1～2 内置工具 + Server + Electron 占位对话/流式 | Agent 循环、流式、进程拆分 | 能聊并能调内置工具 |
 | **P1** | 第二 Provider + 配置 UI + Trace 面板打磨 | Provider 适配、配置驱动 | 切换模型、回看历史与 Trace |
-| **P2** | MCP 多 server + 命名空间 + 权限 ask | MCP 与安全闸门 | 挂真实 MCP 干活 |
+| **P2** | MCP 多 server + 命名空间（详情 `2026-09-26-mcp-toolport-design.md`；**stdio + HTTP** 并列，官方 SDK） | MCP 与安全闸门 | 挂真实 MCP 干活 |
 | **P2.5** | 接入 OpenViking（MCP）+ 配置/文档；可选 `MemoryPort` 薄封装 | 长期记忆与短期 Session 分层 | Agent 可检索/写入跨会话记忆 |
 | **P3** | Python Sidecar + Hooks（含可选 auto-recall/commit） | 跨语言工具协议、记忆生命周期 | TS/Python 工具共存；记忆可自动沉淀 |
 | **P4** | `AgentPeerPort` stub + 文档/示例 | 扩展点设计 | 框架边界清晰 |

@@ -17,7 +17,7 @@
 | 改进对象 | 长期记忆内容与结构（可检索经验）；后续可扩展到工具偏好等 harness 策略 |
 | 非目标（本阶段） | 改模型权重；开放式「智能爆炸」式 RSI；无验证的自动改核心代码 |
 | 存储分层 | 短期：SQLite Session；长期：OpenViking via MCP（既定）；逻辑不进 `packages/core` |
-| 落地时机 | **P2.5（OpenViking 接入）前后**再写实现计划；本文档仅锁定方向 |
+| 落地时机 | **P2.5（OpenViking 接入）前后**再写实现计划；本文档仅锁定方向；前置管道见 `2026-09-26-mcp-toolport-design.md`（P2 已含 stdio + HTTP；记忆语义仍后置） |
 
 ---
 
