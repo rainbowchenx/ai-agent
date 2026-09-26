@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside className="sidebar" aria-label="主导航">
         <div className="brand">
           <Sparkles className="brand-icon" aria-hidden />
-          <span>Agent</span>
+          <span className="brand-text">Agent</span>
         </div>
         <ul className="nav-list" role="menubar">
           {NAV_ITEMS.map((item) => {

@@ -58,8 +58,10 @@ export async function createApp(
   const permissionBroker = new PermissionBroker();
   const mcp = options.mcp ?? createMcpSupervisor();
 
+  // Do not block listen on MCP connect (npx cold-start can exceed desktop health wait).
+  // Status starts empty/connecting; settings + first run see tools once reconcile finishes.
   if (!options.skipMcpReconcile) {
-    await mcp.reconcile(configService.get()).catch((error) => {
+    void mcp.reconcile(configService.get()).catch((error) => {
       console.warn(
         "[mcp] initial reconcile failed:",
         error instanceof Error ? error.message : error,

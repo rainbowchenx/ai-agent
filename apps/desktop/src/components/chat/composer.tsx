@@ -32,10 +32,11 @@ export function Composer() {
     <form
       data-composer
       onSubmit={onSubmit}
-      className="flex items-center gap-2 border-t p-3"
+      className="flex min-w-0 items-center gap-2 border-t p-3"
     >
       <Input
         data-composer-input
+        className="min-w-0 flex-1"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}

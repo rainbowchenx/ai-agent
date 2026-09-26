@@ -14,8 +14,10 @@ function resolvePreloadPath(): string {
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 960,
-    height: 640,
+    width: 1280,
+    height: 800,
+    minWidth: 720,
+    minHeight: 480,
     title: "agent2026",
     webPreferences: {
       preload: resolvePreloadPath(),

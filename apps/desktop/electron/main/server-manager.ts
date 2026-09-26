@@ -249,7 +249,7 @@ export class ServerManager {
       process.stderr.write(`[server] ${chunk.toString()}`);
     });
 
-    const timeoutMs = this.opts.waitTimeoutMs ?? 20_000;
+    const timeoutMs = this.opts.waitTimeoutMs ?? 60_000;
     const pollMs = this.opts.pollIntervalMs ?? 200;
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {

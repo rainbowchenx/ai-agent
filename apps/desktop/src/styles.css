@@ -205,20 +205,24 @@ body {
 /* ===== App shell (aligned with design HTML) ===== */
 .app-shell {
   display: flex;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
   overflow: hidden;
   background: var(--background);
   color: var(--foreground);
 }
 
 .sidebar {
-  width: 240px;
-  flex-shrink: 0;
+  width: clamp(4rem, 18vw, 15rem);
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   padding: 24px 16px;
   background: var(--sidebar);
   border-right: 1px solid var(--border);
+  overflow: hidden;
 }
 
 .brand {
@@ -229,6 +233,13 @@ body {
   font-size: 18px;
   font-weight: 600;
   color: var(--sidebar-foreground);
+  min-width: 0;
+}
+
+.brand-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .brand-icon {
@@ -264,6 +275,13 @@ body {
   text-align: left;
   cursor: pointer;
   transition: background-color 0.18s ease, color 0.18s ease;
+  min-width: 0;
+}
+
+.nav-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav-item:hover:not(:disabled) {
@@ -300,18 +318,25 @@ body {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 28px;
+  gap: 12px;
+  padding: 0 clamp(12px, 2vw, 28px);
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--background) 86%, transparent);
   backdrop-filter: saturate(180%) blur(20px);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .topbar-title {
-  font-size: 18px;
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: clamp(14px, 1.4vw, 18px);
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .avatar {
@@ -341,14 +366,16 @@ body {
 
 .settings-shell {
   display: flex;
-  gap: 32px;
-  max-width: 1200px;
+  gap: clamp(16px, 3vw, 32px);
+  width: 100%;
+  max-width: min(1200px, 100%);
   height: 100%;
+  min-width: 0;
 }
 
 .settings-sidebar {
-  width: 220px;
-  flex-shrink: 0;
+  width: clamp(9rem, 18vw, 13.75rem);
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -356,6 +383,13 @@ body {
   top: 0;
   align-self: flex-start;
   padding-top: 4px;
+  min-width: 0;
+}
+
+.settings-main,
+.settings-content {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .settings-sidebar-item {
@@ -1115,6 +1149,9 @@ body {
   color: var(--foreground);
   font-size: 13px;
   cursor: pointer;
+  min-width: 0;
+  max-width: min(16rem, 40vw);
+  flex: 0 1 auto;
 }
 
 .model-switcher-trigger:has(select:disabled) {
@@ -1128,7 +1165,9 @@ body {
   background: transparent;
   color: inherit;
   font: inherit;
-  max-width: 16rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 0;
   margin: 0;
   cursor: inherit;
@@ -1142,13 +1181,19 @@ body {
 .workbench-grid {
   position: relative;
   display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr) 360px;
+  grid-template-columns:
+    minmax(10rem, 16rem)
+    minmax(0, 1fr)
+    minmax(16rem, min(22.5rem, 32vw));
+  min-width: 0;
   min-height: 0;
   flex: 1;
+  width: 100%;
+  overflow: hidden;
 }
 
 .workbench-grid.trace-collapsed {
-  grid-template-columns: 16rem minmax(0, 1fr);
+  grid-template-columns: minmax(10rem, 16rem) minmax(0, 1fr);
 }
 
 .trace-toggle {
@@ -1187,9 +1232,11 @@ body {
 .panel {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--border);
   background: var(--card);
+  overflow: hidden;
 }
 
 .panel:last-child {
@@ -1197,9 +1244,9 @@ body {
 }
 
 .panel.trace-sidebar {
-  width: 360px;
-  min-width: 360px;
-  flex-shrink: 0;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
   border-right: none;
   border-left: 1px solid var(--border);
   background: var(--card);
@@ -1492,9 +1539,10 @@ button.trace-node-summary:hover {
   filter: brightness(0.96);
 }
 
-@media (max-width: 1024px) {
+/* Narrow window: nav icon rail + session list + chat; trace overlays */
+@media (max-width: 1280px) {
   .workbench-grid.trace-visible {
-    grid-template-columns: 16rem minmax(0, 1fr);
+    grid-template-columns: minmax(10rem, 16rem) minmax(0, 1fr);
   }
 
   .workbench-grid.trace-visible .trace-sidebar {
@@ -1502,9 +1550,76 @@ button.trace-node-summary:hover {
     right: 0;
     top: 0;
     bottom: 0;
-    width: 100%;
-    max-width: 360px;
+    width: min(22.5rem, 92vw);
+    max-width: 100%;
     z-index: 40;
+    box-shadow: -8px 0 24px color-mix(in srgb, #000 35%, transparent);
+  }
+}
+
+@media (max-width: 960px) {
+  .sidebar {
+    width: 4rem;
+    padding: 16px 8px;
+  }
+
+  .brand {
+    justify-content: center;
+    padding: 0 0 20px;
+  }
+
+  .brand-text,
+  .nav-item span {
+    display: none;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 0;
+    gap: 0;
+  }
+
+  .workbench-grid,
+  .workbench-grid.trace-collapsed,
+  .workbench-grid.trace-visible {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workbench-grid > .panel[data-session-list] {
+    display: none;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 56px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .settings-shell {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .settings-sidebar {
+    width: 100%;
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar-title {
+    flex-basis: 100%;
+  }
+
+  .model-switcher-trigger {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
   }
 }
 
@@ -1639,6 +1754,7 @@ button.trace-node-summary:hover {
 
 .permission-card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: stretch;
   justify-content: center;
@@ -1646,7 +1762,8 @@ button.trace-node-summary:hover {
 }
 
 .permission-card-btn {
-  flex: 1 1 0;
+  flex: 1 1 6rem;
+  min-width: 0;
   height: 34px;
   padding: 0 13px;
   border-style: solid;
