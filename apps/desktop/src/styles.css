@@ -807,6 +807,143 @@ body {
   cursor: pointer;
 }
 
+.mcp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mcp-server-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mcp-server-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+  padding: 12px 14px;
+}
+
+.mcp-server-row.is-disabled {
+  opacity: 0.72;
+}
+
+.mcp-server-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.mcp-server-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.mcp-server-summary {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  word-break: break-all;
+}
+
+.mcp-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
+}
+
+.mcp-status {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.mcp-status-ready {
+  color: #0f7b3a;
+  background: color-mix(in srgb, #0f7b3a 12%, transparent);
+}
+
+.mcp-status-connecting {
+  color: #8a6d00;
+  background: color-mix(in srgb, #8a6d00 12%, transparent);
+}
+
+.mcp-status-error {
+  color: #b42318;
+  background: color-mix(in srgb, #b42318 12%, transparent);
+}
+
+.mcp-status-disabled,
+.mcp-status-closed {
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted-foreground) 10%, transparent);
+}
+
+.mcp-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #b42318;
+}
+
+.mcp-server-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mcp-tools {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.mcp-tools ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.mcp-form {
+  margin-top: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--background) 92%, var(--primary) 4%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mcp-form-title {
+  margin: 0;
+  font-size: 15px;
+}
+
+.field-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 13px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
 .about-list {
   display: flex;
   flex-direction: column;

@@ -17,6 +17,7 @@ import {
 import { useSessionStore } from "@/stores/session-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUiStore } from "@/stores/ui-store";
+import { McpSettingsPanel } from "./mcp-settings-panel";
 
 const SECTIONS = [
   { id: "section-models", label: "模型与 Provider", icon: Cpu },
@@ -746,17 +747,11 @@ export function SettingsPage() {
                   </p>
                 </div>
                 <div className="section-body">
-                  <div className="mcp-card">
-                    <Puzzle width={20} height={20} aria-hidden />
-                    <div>
-                      <p style={{ margin: "0 0 8px", fontSize: 14 }}>
-                        即将支持在此管理 MCP Server。当前运行时尚未接入。
-                      </p>
-                      <button type="button" className="mcp-link" disabled>
-                        管理本地服务
-                      </button>
-                    </div>
-                  </div>
+                  {config && baseUrl ? (
+                    <McpSettingsPanel baseUrl={baseUrl} config={config} />
+                  ) : (
+                    <p className="helper-text">加载配置中…</p>
+                  )}
                 </div>
               </div>
             </section>
