@@ -21,7 +21,7 @@
 
 - 登录、注册、OAuth、多用户、云同步。
 - OS 系统钥匙串 / Credential Manager 作为主存储（可列为后续增强；v1 用本机 credentials 文件）。
-- MCP 服务器真实连接与 CRUD 实装（本设置规格仍为占位；完整设计见 `2026-09-26-mcp-toolport-design.md`）。
+- MCP 服务器真实连接与 CRUD 实装（本设置规格仍为占位；完整设计已确认：`2026-09-26-mcp-toolport-design.md`，计划 `plans/2026-09-26-mcp-toolport.md`）。
 - `ask_all` 权限的完整 UI 确认环（字段可编辑；确认交互后补）。
 - 项目级 `<workspace>/.agent2026/config.yaml` 覆盖（规格预留，v1 只做用户级全局配置）。
 
