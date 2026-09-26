@@ -106,3 +106,13 @@ T1 分包 → T2 shared 契约 → T3 Ports → T4 Runner
 ```
 
 断点笔记：`docs/learning/P0-T01.md` … `P0-T11.md`
+
+---
+
+## 后续切片索引（非 P0）
+
+| 切片 | 规格 | 计划 | 学习笔记 |
+|------|------|------|----------|
+| P1 Trace | `docs/superpowers/specs/2026-09-19-trace-panel-design.md` | `plans/2026-09-19-trace-panel.md` | `P1-TRACE.md` |
+| ask_all | `docs/superpowers/specs/2026-09-20-ask-all-permission-design.md` | `plans/2026-09-20-ask-all-permission.md` | `P2-ASK-ALL.md` |
+| **P2 MCP**（规格已确认） | `docs/superpowers/specs/2026-09-26-mcp-toolport-design.md` | `plans/2026-09-26-mcp-toolport.md` | （实现时写 `P2-MCP.md`） |

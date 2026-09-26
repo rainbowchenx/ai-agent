@@ -1,7 +1,7 @@
 # Agent Runtime + Electron 工作台 — 设计规格
 
 **日期：** 2026-09-05  
-**状态：** 已确认；P0–P1（Provider / 设置 / Trace）与 ask_all 权限环已在 `main`。长期记忆候选：**OpenViking via MCP**（§6.5）。**P2 MCP：** 见独立规格 `2026-09-26-mcp-toolport-design.md`（待用户确认；本总规 §4/§7 仍为准绳）。  
+**状态：** 已确认；P0–P1（Provider / 设置 / Trace）与 ask_all 权限环已在 `main`。长期记忆候选：**OpenViking via MCP**（§6.5）。**P2 MCP：** 规格已确认 — `2026-09-26-mcp-toolport-design.md`；计划 `plans/2026-09-26-mcp-toolport.md`（本总规 §4/§7 仍为准绳）。  
 **定位：** 可插拔 Agent Runtime / 框架；桌面端为第一成品形态
 
 ---
