@@ -2,45 +2,51 @@
 
 **日期：** 2026-09-26  
 **状态：** 待用户确认（本 PR 仅规格，无实现代码）  
+**修订：** 2026-09-26（用户补充：设置完整 CRUD、**stdio + HTTP** 并列、官方 SDK、状态/工具展示、per-server 启停）  
 **关联：**  
 - `2026-09-05-agent-runtime-design.md` §4.1 `packages/mcp`、§4.2–4.3 配置/装配、§5.2 权限、§5.4 错误、§6.5 OpenViking、§7 P2  
-- `2026-09-12-settings-design.md`（MCP 分区占位 → 本规格做实）  
+- `2026-09-12-settings-design.md`（MCP 分区占位 → 本规格做实完整 CRUD）  
 - `2026-09-20-ask-all-permission-design.md`（权限闸门已通；MCP 工具名走同一环）  
 - `2026-09-19-rsi-memory-design.md` / §6.5（记忆 **后置**，经 MCP；本规格不实现记忆）  
 **基线：** `origin/main` @ `408c1e9`（审核见 Project Context `main-feature-audit.md`）  
-**范围说明：** 交付用户可感知的 MCP **主路径闭环**（配置 → 连接 → 命名空间工具 → 权限/Trace → 对话调工具），保持轻量核心 + Port 扩展；**不做**插件市场与重量级一体系统。
+**范围说明：** 交付用户可感知的 MCP **主路径闭环**（设置配置 → 启停 → 连接 → 发现工具 → 命名空间进 ToolPort → 权限/Trace → 对话可见），**stdio 与 HTTP 并列**；轻量核心 + Port 扩展；**不做**插件市场与重量级一体系统。
 
 ---
 
 ## 1. 目标与非目标
 
-### 1.1 目标（本规格「完整 MCP」切片 = P2 可演示闭环）
+### 1.1 目标（本规格「完整 MCP」= P2 可演示闭环）
 
-1. **`packages/mcp` 落地 MCP Client**（官方 SDK），作为工具来源适配器，**不**把 MCP SDK 渗进 `packages/core`。
-2. **统一 `ToolPort`**：MCP 工具与 builtin 经装配合并；对 Runner 只见一个 `ToolPort`。
-3. **命名空间**：对外工具名 `{serverName}__{toolName}`，避免多 server / 与 builtin 冲突。
-4. **配置闭环**：与现有 `AppConfig` Zod / `PUT /config` / 设置页 MCP 分区对齐；`agents.default.tools.mcpServers` 引用生效（消解「schema 宽于装配」）。
-5. **生命周期**：stdio 子进程连接、失败可观测、优雅关闭、配置热更后下一 run 用新连接策略（见 §5）。
-6. **权限与 Trace**：MCP 工具名走既有闸门（含 `ask_all`）与 `tool` span；连接级错误可被用户看见，不静默吞掉。
-7. **可演示**：挂至少一个真实 stdio MCP（如 filesystem）→ Agent 调到命名空间工具 → UI 工具卡 + Trace 可见。
+1. **官方 SDK（写死）：** `packages/mcp` 仅依赖 **`@modelcontextprotocol/sdk`** 实现 Client；版本锁在该包；**禁止**自研 wire protocol 或引入第二套 MCP 客户端库；**禁止**把 SDK 渗进 `packages/core`。
+2. **统一 `ToolPort`：** MCP 工具与 builtin 经装配合并；对 Runner 只见一个 `ToolPort`。
+3. **命名空间：** 对外工具名 `{serverName}__{toolName}`，避免多 server / 与 builtin 冲突。
+4. **用户可配置（设置页完整 CRUD）：** 在设置中心 MCP 分区完成新增 / 编辑 / 删除 / 保存；与现有 `AppConfig` Zod、`GET/PUT /config` 热配对齐；`agents.default.tools.mcpServers` 引用生效（消解「schema 宽于装配」）。
+5. **双 transport（本切片必做）：** **stdio** 与 **HTTP**（含 SDK 支持的 Streamable HTTP / SSE 形态，见 §4.2）并列纳入目标与验收；实现 plan 可分 Task，**不得**把 HTTP 整段推到后续规格。
+6. **可启停：** 每个 MCP server 有 `enabled`；**禁用 → 立即断开（或不预连）、不进入 ToolPort**；启用且满足挂载条件后才连接并暴露工具。
+7. **有展示处：**  
+   - **设置页：** server 列表、启用状态、连接状态、**已发现工具列表**（命名空间名 + 摘要）。  
+   - **对话侧：** 调用时既有工具卡 / 权限卡展示完整工具名（`server__tool`）；Trace 侧 `tool` span 同名。
+8. **生命周期：** 连接 / 有限重连 / 错误可观测 / 优雅关闭 / 热更下一 run 用新快照（见 §5）。
+9. **权限与 Trace：** MCP 工具名走既有闸门（含 `ask_all`）与 `tool` span；连接级错误在设置页可见，不静默吞掉。
+10. **可演示：** 至少各跑通 **一条 stdio**（如 filesystem）与 **一条 HTTP** MCP → Agent 调到命名空间工具 → UI 工具卡 + Trace 可见。
 
 ### 1.2 非目标（明确不做 / 推迟）
 
 | 不做 | 理由 |
 |------|------|
-| 插件市场 / 远程目录 / 一键安装商店 | 违背「最小内核可扩展」；配置手写 + 设置 CRUD 足够 |
-| 一次做完所有 transport（SSE / Streamable HTTP / WebSocket 等） | 现有 Zod 仅 `stdio`；HTTP 留给 P2.1，服务 OpenViking |
-| OpenViking / `MemoryPort` / RSI 记忆提炼 | P2.5；本切片只保证「MCP 管道」可接 |
-| Resources / Prompts / Sampling / Roots 完整 MCP 面 | 第一刀只做 **Tools** 发现与调用 |
-| OAuth / 远程鉴权 MCP | 本机 stdio 优先；远程 auth 后置 |
-| 改 `default` 模式「写/网络/MCP 细分询问」 | 独立权限切片；本规格只要求 MCP 名进入现有三种模式 |
-| Hooks 生命周期 / Sidecar / A2A | 总规格后续阶段 |
-| 任意第三方 Agent SDK 内核 | 自研 Runner 不变 |
+| 插件市场 / 远程目录 / 一键安装商店 | 手写配置 + 设置 CRUD 足够 |
+| WebSocket 等 SDK 未作为一等 Client transport 的通道 | 本切片锁定 SDK 已支持的 stdio + HTTP(SSE/Streamable)；其余后置 |
+| OAuth / 完整远程 IdP 流程 | 本切片 HTTP 仅支持可选静态 headers / Bearer 引用（见 Q6）；完整 OAuth 后置 |
+| OpenViking / `MemoryPort` / RSI 记忆提炼 | P2.5；本切片提供可挂 HTTP MCP 的管道（含可连本机 OpenViking URL），**不**实现记忆语义 |
+| Resources / Prompts / Sampling / Roots | 第一刀只做 **Tools** 发现与调用 |
+| 改 `default` 模式「写/网络/MCP 细分询问」 | 独立权限切片 |
+| Hooks / Sidecar / A2A | 总规格后续阶段 |
+| 第三方 Agent SDK 作内核 | 自研 Runner 不变 |
 | 重量级 Harness 一体观测站、图编排 | 产品原则禁止 |
 
 ### 1.3 成功判据（一句话）
 
-用户在设置里添加并启用一个 stdio MCP server → 保存后新 run 能列出并调用 `server__tool` → 权限卡 / 工具卡 / Trace 行为与 builtin 一致；未配置 MCP 时行为与今日完全相同。
+用户在设置里 **CRUD** 并 **启用** stdio 或 HTTP MCP → 看见连接状态与发现的工具 → 新 run 能调用 `server__tool`（对话工具卡可见）→ **禁用**后断开且不再出现在 ToolPort；未配置 MCP 时行为与今日相同。
 
 ---
 
@@ -48,17 +54,23 @@
 
 | 项 | 决策 |
 |----|------|
-| 包边界 | MCP 逻辑在 `packages/mcp`；`core` 只认识 `ToolPort` / `ToolDefinition`；`server` 负责装配与子进程生命周期 |
-| 合并方式 | **Composite / 合并 `ToolPort`**：builtin + 各 MCP 来源；冲突时 **装配失败**（拒绝启动该 run 的工具集），不静默覆盖 |
+| SDK | **必须** `@modelcontextprotocol/sdk`（官方）；仅 `packages/mcp` 依赖；`core` / `desktop` 不直连 SDK |
+| 包边界 | MCP 逻辑在 `packages/mcp`；`server` 装配 + Supervisor 生命周期；`desktop` 只经 HTTP API |
+| Transport | **本切片：`stdio` + `http`（SDK 的 Streamable HTTP / SSE，见 §4.2）** |
+| 合并方式 | **Composite / 合并 `ToolPort`**；冲突时 **装配失败**，不静默覆盖 |
 | 命名空间 | `{serverName}__{originalToolName}`；`serverName` = 配置 key（`[a-zA-Z0-9_-]+`） |
-| 本切片 transport | **仅 stdio**（对齐现有 Zod）；HTTP/SSE 标为 P2.1 |
-| 连接时机 | **Server 进程级**持有 `McpSupervisor`（连接池）；每次 `assembleRuntime` **读当前已连接且健康**的工具快照，不在每次 run 里重新 spawn（热更策略见 §5） |
-| Agent 选用 | 仅挂载 `agents.default.tools.mcpServers` **列出的** server；顶层 `mcpServers` 可配置但未引用则 **不**进该 Agent 工具表（仍可预连，见开放问题 Q1） |
-| 权限 | 工具名用 **完整命名空间名**；`ask_all` / `allowlist` / `default` 语义不变；`allowlist` 条目须写全名如 `filesystem__read_file` |
-| Trace | 沿用 `tool_start`/`tool_end` → `kind: "tool"`；span `name` = 命名空间工具名；可选 metadata 记 `mcpServer`（若现有 span 字段易扩展则加，否则 P2.1） |
-| 配置诚实 | 引用了 MCP 但 Client 未实现 / 连接失败：装配或 run 启动时 **显式错误或警告**，禁止「配置合法、运行时无工具且无声」 |
-| SDK | `@modelcontextprotocol/sdk`（官方）；版本锁在 `packages/mcp` |
-| 桌面 | MCP 设置分区从「即将支持」改为可 CRUD；Renderer **不**直连 MCP 进程 |
+| `enabled` | 默认 `true`；`false` → **不预连 / 断开现有连接**，**不进 ToolPort**，设置页仍显示该行（灰态） |
+| 连接时机 | **Server 进程级** `McpSupervisor`；仅对 **enabled** 的 server reconcile；assemble 读健康快照 |
+| Agent 挂载 | 进入 Agent `list()` 须同时：`enabled === true` **且** 名在 `agents.default.tools.mcpServers` **且** `status === ready`（见 Q1 关于「仅配置未挂载」是否预连） |
+| 权限 | 完整命名空间名；`ask_all` / `allowlist` / `default` 语义不变 |
+| Trace | `tool_start`/`tool_end` → `kind: "tool"`；`name` = 命名空间工具名 |
+| 配置诚实 | 禁止「配置合法、运行时无工具且无声」；失败在设置页 `error` + `lastError` |
+| 用户配置 | **设置页完整 CRUD 为一等交付**，不是占位；也可手改 `config.yaml`，以 Zod 为准 |
+| 展示 | 设置页必须能看清：列表 · 启用 · 连接状态 · 发现的工具；对话侧靠既有工具卡 |
+
+### 2.1 开放问题状态
+
+**Q1–Q5 用户尚未逐条回复。** 实现 plan **暂按 §11「建议默认」锁定**；用户异议后再改规格。本节新增的 HTTP 相关开放点见 **Q6–Q8**。
 
 ---
 
@@ -68,132 +80,159 @@
 
 ```text
 apps/desktop
-  设置：MCP Server CRUD · 启用/禁用 · 连接状态展示
-  对话：工具卡 / 权限卡（工具名为 server__tool）
-        │ HTTP/WS
+  设置 MCP 分区：
+    CRUD · enable 开关 · 连接状态 · 已发现工具列表 · 刷新
+  对话：工具卡 / 权限卡（server__tool）
+        │ HTTP/WS（仅调本机 Agent Server API）
 packages/server
-  ConfigService · McpSupervisor（连接 / 重连 / shutdown）
-  assembleRuntime：builtin ToolPort ⊕ MCP ToolPort(s) → 统一 ToolPort
+  ConfigService · McpSupervisor（stdio 子进程 + HTTP 会话）
+  assembleRuntime：builtin ⊕（enabled∩挂载∩ready 的 MCP ports）→ ToolPort
         │
-packages/mcp                 packages/core
-  McpClientAdapter             ToolPort · ToolRegistry · Runner
-  （SDK session + list/call）   PermissionGate（按工具名）
-        │ stdio
-  外部 MCP Server 进程
+packages/mcp                          packages/core
+  仅依赖 @modelcontextprotocol/sdk      ToolPort · Runner · PermissionGate
+  McpServerSession（stdio | http）
+        │ stdio spawn          │ HTTP(S) 到远程/本机 MCP endpoint
+  外部 MCP Server 进程 / 服务
 ```
 
-### 3.2 关键类型（逻辑形状；实现时落在 `packages/mcp`）
+### 3.2 关键类型（逻辑形状；实现落在 `packages/mcp`）
 
 ```ts
-/** 单 server 适配为 ToolPort；list() 返回已加命名空间的 ToolDefinition */
+type McpTransportKind = "stdio" | "http"; // http = SDK Streamable HTTP 和/或 SSE，见 §4.2
+
 interface McpServerSession {
   readonly name: string;
-  readonly status: "connecting" | "ready" | "error" | "closed";
+  readonly status: "connecting" | "ready" | "error" | "closed" | "disabled";
   readonly lastError?: string;
-  asToolPort(): ToolPort; // execute 内部 strip 前缀再 callTool
+  readonly tools: ToolDefinition[]; // 已加命名空间，供设置页展示
+  asToolPort(): ToolPort;
   refreshTools(): Promise<void>;
   close(): Promise<void>;
 }
 
+interface McpServerStatusView {
+  name: string;
+  enabled: boolean;
+  transport: McpTransportKind;
+  status: McpServerSession["status"];
+  toolCount: number;
+  tools: Array<{ name: string; description?: string }>; // 发现的工具，供 UI
+  lastError?: string;
+}
+
 interface McpSupervisor {
-  /** 按当前 AppConfig.mcpServers 对齐连接集 */
   reconcile(config: AppConfig): Promise<void>;
   getPort(serverName: string): ToolPort | undefined;
-  getStatus(): Record<string, { status: string; toolCount: number; lastError?: string }>;
+  getStatus(): McpServerStatusView[];
+  refreshTools(serverName: string): Promise<void>;
   shutdown(): Promise<void>;
 }
 ```
 
-`core` **不**引入上述类型；仅接收最终合并的 `ToolPort`。
+`core` **不**引入上述类型。
 
 ### 3.3 合并 ToolPort
 
-偏好最小实现（二选一，plan 定稿）：
-
-1. **`CompositeToolPort`**：`list()` 拼接；`execute` 按名路由到子 Port。  
-2. **装配期灌入一个 `ToolRegistry`**：把 MCP handler 注册进同一 registry。
+偏好（plan 二选一）：`CompositeToolPort` 或装配期灌入 `ToolRegistry`。
 
 约束：
 
-- builtin 名保持裸名（`read_file`）；MCP 必须带前缀。  
-- 若 MCP 原始工具名已含 `__`，仍只加 **一层** `{server}__` 前缀。  
-- 同名冲突（两 server 配置错误导致合并撞车、或与 builtin 撞车）：**装配抛错**，该 run 不启动。
+- builtin 裸名；MCP 必须带 `{server}__` 前缀。  
+- 原始工具名已含 `__` 仍只加一层 server 前缀。  
+- 与 builtin 或其它 server 合并撞名 → **装配抛错**，该 run 不启动。  
+- **`enabled: false` 的 server 不得出现在合并结果中。**
 
 ### 3.4 与 builtin 共存
 
 ```text
 createBuiltinToolPort(builtin[])
   ⊕
-McpSupervisor ports for each name in agents.default.tools.mcpServers
-  →
-tools: ToolPort  →  Runner
+ports for servers where:
+  enabled && in agents.default.tools.mcpServers && ready
+  → tools: ToolPort → Runner
 ```
-
-未在 `tools.mcpServers` 引用的 server：**不**出现在该 Agent 的 `list()`（即使 Supervisor 已连接——取决于 Q1）。
 
 ---
 
 ## 4. 配置模型
 
-### 4.1 现状（保持兼容）
+### 4.1 Zod 演进（相对今日 `transport: z.literal("stdio")`）
+
+今日 schema **仅 stdio**。本切片必须扩展为 **判别联合**，与 SDK 能力对齐，例如：
 
 ```yaml
-agents:
-  default:
-    tools:
-      builtin: [read_file, http_fetch]
-      mcpServers: [filesystem]   # 引用顶层 key
-      sidecars: []
-
 mcpServers:
   filesystem:
     transport: stdio
+    enabled: true
     command: npx
     args: [-y, "@modelcontextprotocol/server-filesystem", "/path"]
+    env: {}
+    cwd: null
+
+  openviking:           # 示例：本机 HTTP MCP（记忆仍属 P2.5）
+    transport: http
+    enabled: true
+    url: http://localhost:1933/mcp
+    headers: {}         # 可选；敏感值见 Q6
 ```
 
-Zod 已校验：引用必须存在于顶层 `mcpServers`。本切片 **继续仅 `transport: stdio`**。
+逻辑形状（实现时以 Zod 为准，字段名可微调但语义不变）：
 
-### 4.2 建议增补字段（可选，plan 可裁）
+| `transport` | 必填 | 可选 |
+|-------------|------|------|
+| `stdio` | `command`, `args` | `env`, `cwd`, `enabled` |
+| `http` | `url`（绝对 URL） | `headers`（`Record<string, string>`）、`enabled`；具体用 Streamable HTTP 还是 SSE 见 **Q7** |
 
-| 字段 | 位置 | 用途 |
-|------|------|------|
-| `env?: Record<string, string>` | 每 server | 传给子进程；**禁止**在 UI 回显敏感值（写后可读「已设置」） |
-| `enabled?: boolean`（默认 true） | 每 server | 禁用而不删配置 |
-| `cwd?: string` | 每 server | stdio 工作目录 |
+`agents.default.tools.mcpServers: string[]` 继续引用顶层 key；superRefine：引用必须存在。
 
-不在本切片加：`url` / `headers`（HTTP）、OAuth、超时细项（可用合理默认常量）。
+**兼容：** 缺省 `enabled` → `true`；旧仅 stdio 的配置文件继续合法。
 
-### 4.3 设置页
+### 4.2 HTTP 与 SDK transport 映射
 
-把 MCP 分区从占位改为可操作：
+| 规格层 `transport: http` | SDK（`@modelcontextprotocol/sdk`） | 说明 |
+|--------------------------|-------------------------------------|------|
+| HTTP MCP endpoint | Streamable HTTP Client transport 和/或 SSE Client transport | **必须以官方 SDK 导出为准**；plan 锁定具体 class 名与推荐默认 |
+| 本切片 | 至少一种可连通的远程/本机 HTTP MCP | 验收可用本机 mock 或真实服务（如 OpenViking 的 `/mcp`） |
+
+禁止：手写 JSON-RPC over fetch 绕过 SDK。
+
+### 4.3 设置页（完整 CRUD + 展示 + 启停）— **一等交付**
+
+MCP 分区从「即将支持」改为 **完整可操作**，至少包含：
 
 | 能力 | 行为 |
 |------|------|
-| 列表 | 展示已配置 server：名、command 摘要、状态（来自 `GET` 状态 API 或嵌入 config GET 扩展） |
-| 新增 / 编辑 / 删除 | 写回 `mcpServers` + 可选更新 `agents.default.tools.mcpServers` |
-| 挂到默认 Agent | 勾选 = 写入 `tools.mcpServers` 数组 |
-| 保存 | 现有 `PUT /config`；Zod 失败则拒绝并提示 |
-| 状态 | `ready` / `error` / `connecting`；error 显示 `lastError` 摘要 |
+| **列表** | 所有已配置 server：名称、transport 类型、URL 或 command 摘要、`enabled`、连接状态、工具数量 |
+| **新增** | 表单：名称、transport（stdio / http）、对应字段（command/args 或 url/headers）、是否挂到默认 Agent |
+| **编辑** | 改字段后保存 → `PUT /config` → reconcile |
+| **删除** | 从 `mcpServers` 移除；同步清理 `tools.mcpServers` 引用；断开连接 |
+| **启用 / 禁用** | 开关写 `enabled`；**关：断开且不进 ToolPort**；开：按 §5 连接（若亦在挂载列表则进 Agent） |
+| **连接状态** | `disabled` / `connecting` / `ready` / `error`（+ `lastError` 摘要） |
+| **已发现工具** | 展开或子列表：展示 `server__tool` 与短 description；`ready` 时必有（可为空列表） |
+| **刷新工具** | 每 server「刷新」→ `refreshTools`（Q3 建议默认：要） |
+| **挂到默认 Agent** | 勾选 ⇄ `agents.default.tools.mcpServers` |
+| **保存校验** | Zod 失败拒绝并提示；成功后状态区更新 |
 
-**不**在设置页内嵌「MCP 市场」或自动 `npx` 推荐商店 UI（文档可给示例 command）。
+**不**做：插件市场、应用商店式推荐墙（文档给 stdio / HTTP 各一示例即可）。
 
 ### 4.4 API 表面（Server）
 
 | 面 | 说明 |
 |----|------|
-| 现有 `GET/PUT /config` | 继续承载 MCP 配置；PUT 成功后触发 `McpSupervisor.reconcile` |
-| 建议 `GET /mcp/status`（或 config 旁路字段） | 只读连接状态与工具数量，供设置页刷新；**不含**工具完整 schema 亦可 |
+| `GET/PUT /config` | 承载完整 MCP 配置；PUT 成功 → `McpSupervisor.reconcile` |
+| `GET /mcp/status`（推荐独立路由） | 返回 `McpServerStatusView[]`（含 **tools 列表**），供设置页轮询或保存后拉取 |
 
-桌面仍只走 HTTP；不新增 WS 事件类型（除非后续要做 live 状态推送——非本切片必做）。
+桌面 Renderer **不**直连 MCP；不强制新增 WS 推送（设置页拉取即可）。
 
 ### 4.5 Schema ↔ 装配诚实化
 
 | 情况 | 行为 |
 |------|------|
-| `tools.mcpServers` 非空且 `packages/mcp` 已实现 | 装配合并工具；某 server `error` → 见 §5（默认：该 server 工具不进入 list，run 可启动但设置页标红；**首次调用缺失工具**由模型侧自然失败——或装配时若引用 server 全部 error 则拒绝 run，见 Q2） |
-| 旧二进制 / 未实现时（本规格合入前） | 不适用；合入后不得再忽略引用 |
-| `sidecars` / `a2a` | **仍可**宽 schema；本切片只诚实化 **MCP**；sidecar 继续忽略并（建议）在装配 log warn |
+| enabled + 挂载 + ready | 工具进入合并 ToolPort |
+| enabled + 挂载 + error | 不进 list；设置页标红；run 策略见 Q2 |
+| `enabled: false` | 不连接；不进 ToolPort；UI 显示 disabled |
+| `sidecars` / `a2a` | 本切片仍可不实现；建议装配 log warn |
 
 ---
 
@@ -202,52 +241,53 @@ Zod 已校验：引用必须存在于顶层 `mcpServers`。本切片 **继续仅
 ### 5.1 连接
 
 ```text
-Server 启动
-  → load config
+Server 启动 / PUT /config
   → McpSupervisor.reconcile(config)
-       对每个 enabled stdio server：spawn → initialize → tools/list → status=ready
-  → 就绪服务 HTTP/WS
+       for each server:
+         if !enabled → close if open; status=disabled; skip
+         if stdio → spawn → SDK initialize → tools/list → ready|error
+         if http  → SDK HTTP/SSE transport → initialize → tools/list → ready|error
+  → Agent Server 继续服务
 ```
 
-失败：单个 server `status=error` + `lastError`；**不**阻断整个 Server 启动（无 MCP 时产品仍可用）。
+单 server 失败 **不**阻断整个 Agent Server。
 
-### 5.2 热配置（`PUT /config`）
+### 5.2 热配置
 
 | 变更 | 策略 |
 |------|------|
-| 新增 server | spawn + list tools |
-| 删除 / 禁用 | `close()` 子进程；从池移除 |
-| command/args/env 变更 | 重启该 server 连接 |
-| 仅改 `tools.mcpServers` 引用 | **不必**重连；下次 assemble 换合并集 |
-| 进行中的 run | **不打断**（与现网模型热配一致）；该 run 继续用装配时的 ToolPort 快照 |
-
-实现要点：`assembleRuntime` 拿到的应是 **immutable 工具快照**（或 per-run 绑定的 Composite），避免 run 中途 list 突变。
+| 新增且 enabled | 连接 + list tools |
+| `enabled: true → false` | **立即 close/断开**；移出 ToolPort 池 |
+| `enabled: false → true` | 连接（若需进 Agent 另看挂载列表；预连策略见 Q1） |
+| 删除 | close + 配置移除 |
+| stdio command/args/env 或 http url/headers 变更 | 重启该会话 |
+| 仅改挂载列表 | 可不重连；下次 assemble 换合并集 |
+| 进行中 run | **不打断**；沿用装配时工具快照 |
 
 ### 5.3 重连
 
-- 子进程非预期退出 → 标记 `error`；可选 **有限次**自动重连（建议：指数退避，最多 3 次，常量写死）。  
-- 重连成功 → `refreshTools()`。  
-- 进行中 run 已持有的旧 Port：调用返回明确 tool error（「MCP server unavailable」），不崩 Runner。
+- stdio 子进程意外退出或 HTTP 会话断开 → `error`；**有限次**自动重连（建议退避最多 3 次）。  
+- `enabled: false` 期间 **禁止**自动重连。  
+- 旧 Port 上的 `execute` → 明确 tool error，不崩 Runner。
 
 ### 5.4 工具列表刷新
 
-- 连接成功时 `tools/list` 一次。  
-- 设置页「刷新」按钮 → `refreshTools()`（可选本切片；若做，只刷新该 server）。  
-- **不**实现 MCP `notifications/tools/list_changed` 订阅（可列为增强）。
+- 连接成功时 `tools/list`。  
+- 设置页「刷新」→ `refreshTools`（建议默认要做）。  
+- **不**做 `notifications/tools/list_changed` 订阅（增强项）。
 
 ### 5.5 关闭
 
-- Server shutdown / 进程信号 → `McpSupervisor.shutdown()`：**杀掉进程树**（防泄漏，总规格 §9）。  
-- Desktop 退出拉停 Server 时走同一路径。
+- Server shutdown → `McpSupervisor.shutdown()`：关掉所有 HTTP 会话并 **杀掉 stdio 进程树**。
 
-### 5.4 错误策略（对齐总规格 §5.4）
+### 5.6 错误策略
 
 | 场景 | 策略 |
 |------|------|
-| initialize / list 失败 | 该 server error；其它 server 与 builtin 不受影响 |
-| `callTool` 抛错 / 超时 | 捕获为 tool result 字符串回模型；记 Trace；run 继续 |
-| 未知工具名 | `ToolPort.execute` 抛错 → Runner 既有路径 |
-| 配置非法 | `PUT /config` 拒绝；保留上一份有效配置 |
+| initialize / list 失败 | 该 server `error` + `lastError` |
+| `callTool` 失败 / 超时 | tool result 回模型；记 Trace |
+| URL 不可达 / TLS 失败 | `error`，设置页可见 |
+| 配置非法 | `PUT /config` 拒绝，保留上一份有效配置 |
 
 ---
 
@@ -256,67 +296,67 @@ Server 启动
 ### 6.1 权限
 
 ```text
-模型 tool_call name = "filesystem__read_file"
-  → evaluatePermission({ toolName: "filesystem__read_file", ... })
-  → ask_all：权限卡标题「工具权限请求 · filesystem__read_file」
-  → allowlist：须包含完整名
-  → default：当前仍 auto-allow（与 builtin 相同；细分策略另案）
-  → allow → ToolPort.execute("filesystem__read_file", args)
+tool_call name = "filesystem__read_file"
+  → evaluatePermission({ toolName: 完整名, ... })
+  → ask_all 权限卡标题含完整名
+  → allowlist 须写完整名
+  → default：仍 auto-allow（细分另案）
 ```
 
-- 「本会话允许」按 **完整工具名** 豁免（既有 Broker），不按 server 整包豁免（避免过宽；若产品要「信任整个 server」列为后续）。  
-- MCP 不新增 permission WS 类型。
+「本会话允许」按 **完整工具名**；不做整 server 一键信任（后置）。
 
-### 6.2 Trace / UI
+### 6.2 Trace / 对话展示
 
-| 事件 | 期望 |
-|------|------|
-| `tool_start` / `tool_end` | `name` = 命名空间名；Desktop 工具卡原样展示 |
-| Trace Timeline | `kind: "tool"` span，名称可读 |
-| 连接失败 | 设置页状态；**不必**为连接失败写 trace span（非 run 内） |
-| permission | 沿用 ask_all；permission span 仍为既有半落地债，本切片不强制修 |
+| 面 | 期望 |
+|----|------|
+| 工具卡 | 展示命名空间工具名（既有 `tool_start`/`tool_end`） |
+| Trace | `kind: "tool"`，名称可读 |
+| 设置页 | 连接失败不必写 run trace |
+| permission span | 半落地债不强制本切片修 |
 
 ---
 
 ## 7. 与 Memory / OpenViking 的边界
 
-| 层 | 本切片 | P2.1 / P2.5 |
-|----|--------|-------------|
-| MCP Tools 管道 | ✅ | — |
-| HTTP/SSE transport | ❌ | P2.1（OpenViking 默认 `http://localhost:1933/mcp`） |
-| 配置示例 `mcpServers.openviking` | 文档可预留注释；**本切片不实现 HTTP** | P2.5 做实 |
-| `MemoryPort` / RSI 提炼 / Hooks auto-recall | ❌ | 见 `2026-09-19-rsi-memory-design.md` |
-| `packages/core` 依赖 OpenViking | **禁止**（总规格已定） | 永远禁止直依赖 |
+| 层 | 本切片 | P2.5 |
+|----|--------|------|
+| stdio + HTTP MCP Tools 管道 | ✅ | — |
+| 配置/连接 `http://localhost:1933/mcp` 类 endpoint | ✅（作为普通 HTTP MCP） | — |
+| OpenViking 记忆语义 / RSI / `MemoryPort` / Hooks auto-recall | ❌ | ✅ |
+| `packages/core` 依赖 OpenViking | **禁止** | 永远禁止 |
 
-原则：**记忆是 MCP 之上的产品能力**；本规格只保证「能挂任意 MCP 工具源」，不实现记忆语义。
+原则：本切片让用户 **能配置并启用** HTTP MCP（含未来的 OpenViking）；**不**在产品层宣称「长期记忆已完成」。
 
 ---
 
 ## 8. 分阶段交付
 
-### 8.1 P2（本规格）— 可演示的「完整」主路径
+### 8.1 P2（本规格）— 目标与验收含 stdio **与** HTTP
 
-1. `packages/mcp`：stdio Client + `McpServerSession` + 命名空间 ToolPort。  
-2. `McpSupervisor` + Server 启动/关闭/reconcile。  
-3. `assembleRuntime` 合并 builtin ⊕ MCP。  
-4. Zod 小扩展（`env` / `enabled` 等，按需）+ 配置诚实。  
-5. 设置页 MCP CRUD + 状态。  
-6. 测试：单元（命名空间、合并冲突）+ Server 集成（mock 或 fixture stdio server）+ 手工/脚本挂真实 filesystem MCP。  
-7. 短学习笔记：走读 MCP → ToolPort。
+实现 plan 可拆 Task（先 stdio 再 HTTP，或并行），但 **规格完成定义同时包含两者**。
 
-### 8.2 P2.1 — transport 增强（独立小规格/plan）
+建议实现顺序（供 writing-plans，非本 PR）：
 
-- Streamable HTTP / SSE（或 SDK 当时推荐的远程 transport）。  
-- 为 OpenViking 铺路；设置页 URL 字段。
+1. Zod 判别联合（stdio | http）+ `enabled`  
+2. `packages/mcp` + **官方 SDK**：stdio session + 命名空间 ToolPort  
+3. 同包 HTTP session（SDK Streamable HTTP / SSE）  
+4. `McpSupervisor` reconcile（尊重 enabled）+ shutdown  
+5. `assembleRuntime` 合并 + 冲突检测  
+6. `GET /mcp/status`（含 tools 列表）  
+7. 设置页完整 CRUD + 启停 + 状态 + 工具展示 + 刷新  
+8. 测试与双 transport 冒烟  
+
+### 8.2 不再单列「P2.1 = HTTP」
+
+原「HTTP 整段推到 P2.1」**作废**。若需文档分期，仅作为 **同一规格下的 Task 顺序**，不是范围外。
 
 ### 8.3 P2.5 — OpenViking 记忆（既有意向）
 
-- 文档 + 示例配置；可选 `MemoryPort` 薄门面。  
-- **不**阻塞在 P2 验收之外宣称「记忆已完成」。
+- 记忆语义、示例与可选 `MemoryPort`；依赖本切片 HTTP 管道已通。
 
 ### 8.4 更后
 
-- `tools/list_changed`、Resources/Prompts、整 server 信任、OAuth、Sidecar 同构 Supervisor 复用。
+- `list_changed`、Resources/Prompts、OAuth 完整流、整 server 信任、Sidecar 复用 Supervisor。
 
 ---
 
@@ -324,26 +364,29 @@ Server 启动
 
 ### 9.1 功能
 
-1. 配置一个 stdio MCP（示例：filesystem）并加入 `tools.mcpServers`，保存成功。  
-2. 新 run 中模型可见 `server__…` 工具（经 Provider 的 tools 列表）。  
-3. 成功调用至少一次；Desktop 出现工具卡；Trace 有对应 tool span。  
-4. `ask_all` 下对 MCP 工具弹出权限卡，允许后执行、拒绝后 tool error 回模型。  
-5. 删除/禁用 server 后，新 run 不再暴露其工具；子进程被回收。  
-6. 无 MCP 配置时，行为与合入前一致（回归 `pnpm test` 全绿）。  
-7. Server 退出无残留 MCP 子进程（抽查）。
+1. **设置 CRUD：** 可新增/编辑/删除 stdio 与 HTTP server，保存进 `config.yaml`（经 API），刷新后仍在。  
+2. **启停：** 禁用后状态为 disabled、进程/会话断开、新 run 的 ToolPort **无**其工具；再启用可恢复连接（在挂载前提下进入 ToolPort）。  
+3. **展示：** 设置页可见连接状态与 **发现的工具列表**；对话中调用后工具卡显示 `server__tool`。  
+4. **stdio 冒烟：** 至少一个真实或 fixture stdio MCP 调用成功 + Trace tool span。  
+5. **HTTP 冒烟：** 至少一个 HTTP MCP（本机 mock 或真实 endpoint）调用成功 + Trace tool span。  
+6. **`ask_all`：** 对 MCP 工具弹出权限卡，允许/拒绝行为与 builtin 一致。  
+7. **挂载：** 仅 `tools.mcpServers` 中且 enabled+ready 的工具进模型 tools 列表。  
+8. **无 MCP：** 与合入前行为一致；`pnpm test` 全绿。  
+9. **退出：** 无残留 stdio MCP 子进程（抽查）。
 
 ### 9.2 工程
 
-1. `packages/core` 的 `package.json` **无** `@modelcontextprotocol/sdk` 依赖。  
-2. `assembleRuntime`（或等价）消费 `tools.mcpServers`；不再静默忽略。  
-3. 默认测试套件含 MCP 相关单测/集成测（可用 mock transport 或轻量 fixture，避免强制外网 `npx`）。
+1. MCP 客户端 **只**通过 `@modelcontextprotocol/sdk`；`packages/core/package.json` **无**该依赖。  
+2. `assembleRuntime`（或等价）消费 MCP 配置；不再静默忽略。  
+3. Zod 接受 `transport: stdio | http`（及对应字段）；非法组合拒绝保存。  
+4. 默认测试套件含命名空间 / enabled / 合并冲突，以及 stdio与 HTTP 的 mock/fixture 测（避免强制外网）。
 
-### 9.3 非验收（本切片不要求）
+### 9.3 非验收
 
-- OpenViking 读写记忆。  
-- HTTP MCP。  
-- 设置页美化为「市场」。  
-- `default` 权限对 MCP 更严。
+- OpenViking 记忆读写语义、RSI 提炼。  
+- OAuth 授权码流 / 动态 client registration。  
+- 插件市场 UI。  
+- `default` 权限对 MCP 加严。
 
 ---
 
@@ -351,53 +394,66 @@ Server 启动
 
 | 风险 | 缓解 |
 |------|------|
-| stdio 子进程泄漏 / 僵尸 | shutdown 钩子 + 进程树；集成测或手工 `ps` 抽查 |
-| `npx` 冷启动慢 | 设置页展示 connecting；超时后 error；文档建议全局安装或固定路径 |
-| 工具名过长 / Provider 限制 | 保持 `{server}__{tool}`；server key 宜短；遇硬限制再开别名机制（后置） |
-| 热更与进行中 run 竞态 | per-run 工具快照；reconcile 不杀正在被旧 Port 使用的进程直到 run 结束（或 close 后 execute 返回明确错误） |
-| Schema 再变宽（HTTP 字段） | P2.1 再扩 Zod；本切片不提前加 URL 以免再次「宽于装配」 |
-| SDK API 变动 | 锁版本；适配集中在 `packages/mcp` |
-| 安全：MCP 等同本地代码执行 | 文档警告；依赖 ask_all / 日后 default 细分；不自动信任未知 command |
+| stdio 子进程泄漏 | shutdown + 进程树；禁用即 kill |
+| HTTP 方言不一（SSE vs Streamable） | 只走官方 SDK；Q7 锁定默认；验收用一种稳定方言 + 文档注明 |
+| `npx` 冷启动慢 | UI `connecting`；超时 → error |
+| 热更与进行中 run | per-run 工具快照 |
+| headers / 密钥进 config | Q6；UI 不回显明文 |
+| 安全：stdio≈本地代码执行；HTTP≈信任远端 | 文档警告；ask_all；不自动启用未知 server |
+| SDK API 变动 | 锁版本；适配仅在 `packages/mcp` |
 
 ---
 
 ## 11. 开放问题（需用户拍板）
 
+### 11.1 仍待逐条确认（暂按建议默认）
+
+| ID | 问题 | 建议默认 | 状态 |
+|----|------|----------|------|
+| **Q1** | `enabled` 但未加入 `tools.mcpServers`：是否仍预连接以便设置页展示工具？ | **预连接**（便于看发现的工具）；仅挂载者进入 Agent `list()`。`enabled: false` 一律不连 | 用户未逐条回复；**暂按此默认** |
+| **Q2** | 挂载的 server 全部 `error` 时是否拒绝新 run？ | **允许启动**（仅 builtin）+ 设置页/日志警告 | 同上 |
+| **Q3** | 设置页「刷新工具列表」？ | **要**；不做 `list_changed` 订阅 | 同上 |
+| **Q4** | stdio `env` 敏感值存哪？ | 非密进 config；类 Key 走 credentials 引用（来不及可先只支持非密） | 同上 |
+| **Q5** | 文档默认 stdio 示例？ | `@modelcontextprotocol/server-filesystem` + workspace 路径 | 同上 |
+
+### 11.2 本轮新增（HTTP / 鉴权）
+
 | ID | 问题 | 建议默认 |
 |----|------|----------|
-| **Q1** | 未加入 `tools.mcpServers` 的顶层 server：是否仍预连接？ | **预连接**（设置页能看到 ready/error）；仅引用者进入 Agent `list()` |
-| **Q2** | 引用的 server 全部 `error` 时，新 run 是否拒绝启动？ | **允许启动**（仅 builtin），设置页/日志警告；避免因一个坏 MCP 完全不能聊 |
-| **Q3** | P2 是否包含设置页「刷新工具列表」按钮？ | **要**（低成本）；`list_changed` 订阅不要 |
-| **Q4** | `env` 敏感值存储：进 `config.yaml` 还是 credentials 侧？ | **非密钥 env 可进 config**；类 API Key 的值走现有 credentials 引用机制（若 P2 来不及，可先只支持非密 env，密钥后置） |
-| **Q5** | 示例 MCP：文档默认推荐哪个？ | `@modelcontextprotocol/server-filesystem` + 用户 workspace 路径 |
+| **Q6** | HTTP `headers`（如 `Authorization`）存在哪？UI 如何编辑？ | **写路径：** 敏感 header 值优先走 credentials 引用（如 `Authorization: Bearer ${ref:OV_TOKEN}` 或并列 `headerRefs`）；若 P2 实现预算紧，可先允许 config 内明文 headers + UI 警告「勿提交密钥」，但 GET 配置对敏感 key **掩码**。完整钥匙串后置 |
+| **Q7** | `transport: http` 默认用 SDK 的 Streamable HTTP 还是 SSE？ | **优先 Streamable HTTP**（SDK 现行推荐）；若 initialize 失败且 URL 像经典 SSE endpoint，可再尝试 SSE——或设置页增加子选项 `httpSubtype: streamable | sse`（默认 streamable）。plan 按 SDK 版本文档锁死 class |
+| **Q8** | HTTP 验收用什么服务？ | **优先：** 测试用轻量 mock HTTP MCP（CI 友好）；文档另给 OpenViking `http://localhost:1933/mcp` 作手工示例，不把 OV 安装纳入 CI |
 
-未回复前，实现 plan 按「建议默认」锁定；用户异议再改规格。
+未回复前，writing-plans / 实现 **按上表建议默认**；异议只改规格再动代码。
 
 ---
 
 ## 12. 供 writing-plans 分期（预告，非本 PR 任务）
 
-> 以下仅拆期提示；**不要**在本 PR 实现。确认规格后另开 `docs/superpowers/plans/2026-09-26-mcp-toolport.md`（或当日）。
+> 确认规格后另开 `docs/superpowers/plans/2026-09-26-mcp-toolport.md`。**不要**在本 PR 实现。
 
 | Task | 内容 | 建议测试 |
 |------|------|----------|
-| 1 | `packages/mcp` 脚手架：依赖 SDK、`McpServerSession` stdio、命名空间 list/execute | 单测 mock |
-| 2 | `McpSupervisor` reconcile / shutdown | 单测 |
-| 3 | `assembleRuntime` 合并 + 冲突检测；Server 启动挂 Supervisor | Server 集成 |
-| 4 | Zod 可选字段 + PUT 后 reconcile；status API | shared + server 测 |
-| 5 | 设置页 MCP CRUD + 状态 | Desktop 组件测 / 手工 |
-| 6 | ask_all + Trace 回归（MCP 名） | 扩展现有 runs 测或 fixture |
-| 7 | 文档：README `packages/mcp`、学习短记、总规格状态回写 | — |
-| 8 | 手工冒烟清单：filesystem MCP 真连 | 学习笔记勾选 |
+| 1 | Zod：`stdio` \| `http` 判别联合 + `enabled`；shared 单测 | shared |
+| 2 | `packages/mcp` 脚手架 + **仅** `@modelcontextprotocol/sdk`；stdio session + 命名空间 | 单测 mock |
+| 3 | 同包 HTTP session（按 Q7） | 单测 mock |
+| 4 | `McpSupervisor`（enabled 短路、reconcile、shutdown） | 单测 |
+| 5 | `assembleRuntime` 合并；Server 挂 Supervisor | Server 集成 |
+| 6 | `GET /mcp/status`（含 tools） | server 测 |
+| 7 | 设置页完整 CRUD + 启停 + 状态 + 工具列表 + 刷新 | Desktop / 手工 |
+| 8 | ask_all + Trace 回归 | 扩展 runs 测 |
+| 9 | 冒烟：stdio filesystem + HTTP mock/真实 | 学习笔记勾选 |
+| 10 | 文档：`packages/mcp` README、学习短记、总规格回写 | — |
 
-合入策略：分支 `feat/mcp-toolport`（或 `cursor/…`），自最新 `main`；合并前 `pnpm test` 全绿。
+合入：自最新 `main` 出实现分支；合并前 `pnpm test` 全绿。
 
 ---
 
 ## 13. 后续（明确不在本规格交付）
 
-- P2.1 HTTP transport → P2.5 OpenViking  
+- P2.5 OpenViking **记忆语义** / RSI / `MemoryPort`（HTTP 管道已在本切片）  
 - Resources / Prompts / Sampling  
-- 整 server 会话级信任、OAuth  
-- Sidecar Supervisor 与 MCP 进程管理复用  
+- 完整 OAuth  
+- 整 server 会话级信任  
+- Sidecar 与 MCP Supervisor 复用  
 - `default` 权限细分（含「MCP 默认询问」）
