@@ -34,6 +34,8 @@ describe("Fastify app", () => {
       configPath: join(dir, "config.yaml"),
       credentialsPath: join(dir, "credentials.yaml"),
       dbPath: join(dir, "data.sqlite"),
+      skipMcpReconcile: true,
+      skipOpenVikingReconcile: true,
     });
     return app;
   }
@@ -95,6 +97,8 @@ describe("Fastify app", () => {
       configPath: join(dir, "config.yaml"),
       credentialsPath: join(dir, "credentials.yaml"),
       dbPath: join(dir, "data.sqlite"),
+      skipMcpReconcile: true,
+      skipOpenVikingReconcile: true,
     });
     const res = await app.inject({ method: "GET", url: "/config" });
     await app.close();

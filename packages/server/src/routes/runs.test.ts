@@ -81,6 +81,8 @@ describe("WebSocket run + stop", () => {
       dbPath: join(dir, "data.sqlite"),
       workspaceRoot: dir,
       model,
+      skipMcpReconcile: true,
+      skipOpenVikingReconcile: true,
     });
     await app.ready();
     return app;

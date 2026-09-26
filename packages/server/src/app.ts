@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { ModelPort } from "@agent2026/core";
+import type { AppConfig } from "@agent2026/shared";
 import { defaultSqlitePath, openSqlite } from "./db/sqlite.js";
 import { createConfigService } from "./config/config-service.js";
 import {
@@ -11,11 +12,20 @@ import {
 } from "./config/load-config.js";
 import { createCredentialStore } from "./credentials/store.js";
 import { createMcpSupervisor, type McpSupervisor } from "./mcp/supervisor.js";
+import {
+  createDefaultEnsureRuntime,
+  createDefaultOpenVikingHealthCheck,
+  createDefaultSpawnServer,
+  createOpenVikingSupervisor,
+  type OpenVikingSupervisor,
+} from "./openviking/supervisor.js";
+import { defaultOpenVikingPaths } from "./openviking/paths.js";
 import { PermissionBroker } from "./permissions/permission-broker.js";
 import { registerConfigRoutes } from "./routes/config.js";
 import { registerCredentialRoutes } from "./routes/credentials.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerMcpRoutes } from "./routes/mcp.js";
+import { registerOpenVikingRoutes } from "./routes/openviking.js";
 import { registerRunRoutes } from "./routes/runs.js";
 import { registerSessionsRoutes } from "./routes/sessions.js";
 import { registerSystemRoutes } from "./routes/system.js";
@@ -38,6 +48,10 @@ export type CreateAppOptions = {
   mcp?: McpSupervisor;
   /** Skip initial MCP reconcile (tests that do not need MCP). */
   skipMcpReconcile?: boolean;
+  /** Injected OpenViking supervisor (tests); default creates a real one. */
+  openViking?: OpenVikingSupervisor;
+  /** Skip initial OpenViking reconcile (tests that do not need OV). */
+  skipOpenVikingReconcile?: boolean;
 };
 
 export async function createApp(
@@ -58,21 +72,63 @@ export async function createApp(
   const permissionBroker = new PermissionBroker();
   const mcp = options.mcp ?? createMcpSupervisor();
 
-  // Do not block listen on MCP connect (npx cold-start can exceed desktop health wait).
-  // Status starts empty/connecting; settings + first run see tools once reconcile finishes.
-  if (!options.skipMcpReconcile) {
-    void mcp.reconcile(configService.get()).catch((error) => {
-      console.warn(
-        "[mcp] initial reconcile failed:",
-        error instanceof Error ? error.message : error,
-      );
+  const paths = defaultOpenVikingPaths();
+  const openViking =
+    options.openViking ??
+    createOpenVikingSupervisor({
+      paths,
+      resolveCredential: (ref) => credentials.resolve(ref),
+      ensureRuntime: createDefaultEnsureRuntime(paths.runtimeProjectDir),
+      healthCheck: createDefaultOpenVikingHealthCheck(),
+      spawnServer: createDefaultSpawnServer(paths.runtimeProjectDir),
+      writeConfigPreset: (mutate) => {
+        configService.set(mutate(configService.get()));
+      },
     });
+
+  /** Guard nested onChange from writeConfigPreset during reconcileAll. */
+  let reconciling = false;
+
+  async function reconcileAll(config: AppConfig): Promise<void> {
+    if (reconciling) return;
+    reconciling = true;
+    try {
+      await openViking.reconcile(config);
+      await mcp.reconcile(configService.get());
+    } finally {
+      reconciling = false;
+    }
+  }
+
+  // Do not block listen on OV sync / MCP connect.
+  // Status starts empty/connecting; settings + first run see tools once reconcile finishes.
+  if (!options.skipOpenVikingReconcile || !options.skipMcpReconcile) {
+    void (async () => {
+      if (reconciling) return;
+      reconciling = true;
+      try {
+        if (!options.skipOpenVikingReconcile) {
+          await openViking.reconcile(configService.get());
+        }
+        if (!options.skipMcpReconcile) {
+          await mcp.reconcile(configService.get());
+        }
+      } catch (error) {
+        console.warn(
+          "[openviking/mcp] initial reconcile failed:",
+          error instanceof Error ? error.message : error,
+        );
+      } finally {
+        reconciling = false;
+      }
+    })();
   }
 
   const unsubscribeConfig = configService.onChange((config) => {
-    void mcp.reconcile(config).catch((error) => {
+    if (reconciling) return;
+    void reconcileAll(config).catch((error) => {
       console.warn(
-        "[mcp] reconcile after config change failed:",
+        "[openviking/mcp] reconcile after config change failed:",
         error instanceof Error ? error.message : error,
       );
     });
@@ -81,6 +137,7 @@ export async function createApp(
   const app = Fastify({ logger: false });
   app.addHook("onClose", async () => {
     unsubscribeConfig();
+    await openViking.shutdown().catch(() => undefined);
     await mcp.shutdown().catch(() => undefined);
     db.close();
   });
@@ -108,6 +165,13 @@ export async function createApp(
     },
   });
   registerMcpRoutes(app, { mcp });
+  registerOpenVikingRoutes(app, {
+    openViking,
+    retry: async () => {
+      await reconcileAll(configService.get());
+      return openViking.getStatus();
+    },
+  });
   registerCredentialRoutes(app, {
     store: credentials,
     getConfig: () => configService.get(),
@@ -126,8 +190,9 @@ export async function createApp(
   });
   registerTraceRoutes(app, { sessionStore, tracePort });
 
-  // Expose for status routes (Task 6) and tests.
+  // Expose for status routes and tests.
   app.decorate("mcpSupervisor", mcp);
+  app.decorate("openVikingSupervisor", openViking);
 
   return app;
 }
@@ -135,5 +200,6 @@ export async function createApp(
 declare module "fastify" {
   interface FastifyInstance {
     mcpSupervisor: McpSupervisor;
+    openVikingSupervisor: OpenVikingSupervisor;
   }
 }

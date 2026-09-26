@@ -126,6 +126,7 @@ describe("MCP tools through permission and trace", () => {
       model,
       mcp,
       skipMcpReconcile: true,
+      skipOpenVikingReconcile: true,
     });
     await app.ready();
 
