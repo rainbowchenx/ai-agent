@@ -97,5 +97,5 @@ pnpm --filter @agent2026/desktop exec vitest run --config vitest.live.config.ts
 | `packages/providers` | OpenAI 兼容 `ModelPort` |
 | `packages/server` | Fastify + SQLite + WS |
 | `apps/desktop` | Electron 壳 + 占位 React 工作台 |
-| `packages/mcp` | P2 占位 |
+| `packages/mcp` | MCP Client（官方 SDK）→ 命名空间 ToolPort |
 | `packages/sidecar-python` | P3 占位 |

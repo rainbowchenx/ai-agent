@@ -75,19 +75,19 @@
   - `http`: `url`, optional `headers`, `httpSubtype` (`streamable`\|`sse`, default `streamable`), `enabled`
 - 保留 `agents.default.tools.mcpServers` 引用校验
 
-- [ ] **Step 1: 写失败测** — 接受 stdio / http；拒 http 缺 url；拒未知 transport；`enabled` 缺省解析为 true
+- [x] **Step 1: 写失败测** — 接受 stdio / http；拒 http 缺 url；拒未知 transport；`enabled` 缺省解析为 true
 
-- [ ] **Step 2: 跑测期望 FAIL**
+- [x] **Step 2: 跑测期望 FAIL**
 
 ```bash
 pnpm --filter @agent2026/shared test
 ```
 
-- [ ] **Step 3: 实现 schema + 更新 `defaultAppConfig`（mcpServers 仍可选空）**
+- [x] **Step 3: 实现 schema + 更新 `defaultAppConfig`（mcpServers 仍可选空）**
 
-- [ ] **Step 4: 跑测期望 PASS**
+- [x] **Step 4: 跑测期望 PASS**
 
-- [ ] **Step 5: Commit** `feat(shared): mcpServers stdio|http zod union with enabled`
+- [x] **Step 5: Commit** `feat(shared): mcpServers stdio|http zod union with enabled`
 
 ---
 
@@ -110,15 +110,15 @@ pnpm --filter @agent2026/shared test
 - `session.asToolPort(): ToolPort`（list/execute 使用 `{name}__{tool}`）
 - **禁止** core 引用本包中的 SDK 类型泄漏到 core 公共 API
 
-- [ ] **Step 1: 脚手架 package + 依赖 SDK；导出空模块可 build/test**
+- [x] **Step 1: 脚手架 package + 依赖 SDK；导出空模块可 build/test**
 
-- [ ] **Step 2: 命名空间单测**（prefix/strip/冲突边界）
+- [x] **Step 2: 命名空间单测**（prefix/strip/冲突边界）
 
-- [ ] **Step 3: stdio session — 优先用 mock Client（不强制真 npx）；断言 list 带前缀、execute 去前缀调用**
+- [x] **Step 3: stdio session — 优先用 mock Client（不强制真 npx）；断言 list 带前缀、execute 去前缀调用**
 
-- [ ] **Step 4: README 写清：仅 SDK、示例 filesystem command**
+- [x] **Step 4: README 写清：仅 SDK、示例 filesystem command**
 
-- [ ] **Step 5: Commit** `feat(mcp): stdio session and namespaced ToolPort via official SDK`
+- [x] **Step 5: Commit** `feat(mcp): stdio session and namespaced ToolPort via official SDK`
 
 ---
 
@@ -136,13 +136,13 @@ pnpm --filter @agent2026/shared test
 - `createHttpMcpSession({ name, url, headers?, httpSubtype? })`
 - 默认 `httpSubtype: "streamable"`；`"sse"` 走 SSE transport（class 名以安装的 SDK 版本文档为准，实现时写进 README）
 
-- [ ] **Step 1: mock HTTP MCP fixture（CI 无外网）**
+- [x] **Step 1: mock HTTP MCP fixture（CI 无外网）**
 
-- [ ] **Step 2: 写测 — streamable 连接 → list 带前缀 → callTool**
+- [x] **Step 2: 写测 — streamable 连接 → list 带前缀 → callTool**
 
-- [ ] **Step 3: 实现 HTTP session；可选：streamable 失败再试 sse（若做，单测覆盖开关）**
+- [x] **Step 3: 实现 HTTP session；可选：streamable 失败再试 sse（若做，单测覆盖开关）**
 
-- [ ] **Step 4: Commit** `feat(mcp): HTTP MCP session (streamable default, sse option)`
+- [x] **Step 4: Commit** `feat(mcp): HTTP MCP session (streamable default, sse option)`
 
 ---
 
@@ -162,13 +162,13 @@ pnpm --filter @agent2026/shared test
 - `McpSupervisor.reconcile(config)` / `getStatus()` / `refreshTools(name)` / `getPort(name)` / `shutdown()`
 - reconcile：`!enabled` → close + disabled；enabled → 连接（无论是否挂载）；status 含 tools[]
 
-- [ ] **Step 1: Composite 单测 — 合并 list、路由 execute、撞名抛错**
+- [x] **Step 1: Composite 单测 — 合并 list、路由 execute、撞名抛错**
 
-- [ ] **Step 2: Supervisor 单测 — enabled false 不连；true 预连；shutdown 清理（mock session 工厂注入）**
+- [x] **Step 2: Supervisor 单测 — enabled false 不连；true 预连；shutdown 清理（mock session 工厂注入）**
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
-- [ ] **Step 4: Commit** `feat: CompositeToolPort and McpSupervisor reconcile/shutdown`
+- [x] **Step 4: Commit** `feat: CompositeToolPort and McpSupervisor reconcile/shutdown`
 
 ---
 
@@ -187,15 +187,15 @@ pnpm --filter @agent2026/shared test
 - 挂载全 error：不 throw；仅 builtin（Q2）；可 `console.warn` / 日志  
 - PUT config 后 reconcile；**不**打断进行中 run
 
-- [ ] **Step 1: runtime 测 — 挂载 mock ready port → list 含 `svc__x`；disabled/未挂载不含**
+- [x] **Step 1: runtime 测 — 挂载 mock ready port → list 含 `svc__x`；disabled/未挂载不含**
 
-- [ ] **Step 2: 实现 assemble + app 接线**
+- [x] **Step 2: 实现 assemble + app 接线**
 
-- [ ] **Step 3: `pnpm --filter @agent2026/server test` 相关文件 PASS**
+- [x] **Step 3: `pnpm --filter @agent2026/server test` 相关文件 PASS**
 
-- [ ] **Step 4: Commit** `feat(server): assemble MCP tools into runtime ToolPort`
+- [x] **Step 4: Commit** `feat(server): assemble MCP tools into runtime ToolPort`
 
-- [ ] **Step 5: 断点自检** — 用 fixture stdio 或 mock：新 run 模型 tools 含命名空间名（集成测或临时脚本）
+- [x] **Step 5: 断点自检** — 用 fixture stdio 或 mock：新 run 模型 tools 含命名空间名（集成测或临时脚本）
 
 ---
 
@@ -211,13 +211,13 @@ pnpm --filter @agent2026/shared test
 - `GET /mcp/status` → `McpServerStatusView[]`（name, enabled, transport, status, toolCount, tools[{name,description?}], lastError?）
 - `POST /mcp/:serverName/refresh` → 调用 `refreshTools`（Q3）
 
-- [ ] **Step 1: 路由测 — status 形状；refresh 触发**
+- [x] **Step 1: 路由测 — status 形状；refresh 触发**
 
-- [ ] **Step 2: 掩码测 — GET config 不回显明文 Authorization**
+- [x] **Step 2: 掩码测 — GET config 不回显明文 Authorization**
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
-- [ ] **Step 4: Commit** `feat(server): MCP status/refresh APIs and header masking`
+- [x] **Step 4: Commit** `feat(server): MCP status/refresh APIs and header masking`
 
 ---
 
@@ -238,13 +238,13 @@ pnpm --filter @agent2026/shared test
 - 删除；刷新按钮；保存走现有 PUT `/config`  
 - 敏感 headers：输入可写；展示掩码/占位；警告文案
 
-- [ ] **Step 1: API 客户端 + store 拉 status（保存后/进入分区时刷新）**
+- [x] **Step 1: API 客户端 + store 拉 status（保存后/进入分区时刷新）**
 
-- [ ] **Step 2: 替换「即将支持」为 CRUD UI**
+- [x] **Step 2: 替换「即将支持」为 CRUD UI**
 
-- [ ] **Step 3: Desktop 测或手工清单勾选（组件测能盖 store 即可）**
+- [x] **Step 3: Desktop 测或手工清单勾选（组件测能盖 store 即可）**
 
-- [ ] **Step 4: Commit** `feat(desktop): MCP settings CRUD, enable toggle, status and tools`
+- [x] **Step 4: Commit** `feat(desktop): MCP settings CRUD, enable toggle, status and tools`
 
 ---
 
@@ -258,11 +258,11 @@ pnpm --filter @agent2026/shared test
 - mock model 调 `mcpdemo__echo` → ask_all 收到 `permission_request.toolName === "mcpdemo__echo"`  
 - allow → `tool_start`/`tool_end` 同名；Trace span `kind: "tool"`
 
-- [ ] **Step 1: 集成测覆盖 ask_all + tool span 名称**
+- [x] **Step 1: 集成测覆盖 ask_all + tool span 名称**
 
-- [ ] **Step 2: `pnpm --filter @agent2026/server test` PASS**
+- [x] **Step 2: `pnpm --filter @agent2026/server test` PASS**
 
-- [ ] **Step 3: Commit** `test(server): MCP tool names through permission and trace`
+- [x] **Step 3: Commit** `test(server): MCP tool names through permission and trace`
 
 ---
 
@@ -281,11 +281,11 @@ pnpm --filter @agent2026/shared test
 4. ask_all 下点允许/拒绝各一次  
 5. Server 退出后无残留 MCP 子进程（`ps` 抽查）
 
-- [ ] **Step 1: 写 `P2-MCP.md`（架构走读 + 冒烟勾选）**
+- [x] **Step 1: 写 `P2-MCP.md`（架构走读 + 冒烟勾选）**
 
-- [ ] **Step 2: 全量 `pnpm test` 期望全绿**
+- [x] **Step 2: 全量 `pnpm test` 期望全绿**
 
-- [ ] **Step 3: Commit** `docs: P2 MCP learning notes and smoke checklist`
+- [x] **Step 3: Commit** `docs: P2 MCP learning notes and smoke checklist`
 
 ---
 
@@ -296,9 +296,9 @@ pnpm --filter @agent2026/shared test
 - 规格状态 → 已实现（合入 main 时）  
 - 总规格 §7 P2 行如需勾选说明可一句回写
 
-- [ ] **Step 1: 文档一致性检查**
+- [x] **Step 1: 文档一致性检查**
 
-- [ ] **Step 2: Commit** `docs: mark MCP toolport slice implemented`（仅在代码已合入后）
+- [x] **Step 2: Commit** `docs: mark MCP toolport slice implemented`（仅在代码已合入后）
 
 ---
 

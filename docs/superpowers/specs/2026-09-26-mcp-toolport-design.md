@@ -1,7 +1,7 @@
 # MCP Client → ToolPort — 设计规格
 
 **日期：** 2026-09-26  
-**状态：** **已确认**（2026-09-26；用户回复「按照建议」锁定 Q1–Q8）  
+**状态：** **已实现**（2026-09-26；实现分支 `cursor/mcp-toolport-caf5`）  
 **实现计划：** `docs/superpowers/plans/2026-09-26-mcp-toolport.md`（本 PR docs-only；业务代码另开执行）  
 **修订：** 2026-09-26（用户补充：设置完整 CRUD、**stdio + HTTP** 并列、官方 SDK、状态/工具展示、per-server 启停）  
 **关联：**  
