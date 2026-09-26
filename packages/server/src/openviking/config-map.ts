@@ -124,5 +124,8 @@ export function mapProviderToOvConf(
 
 export function writeOvConf(confPath: string, conf: object): void {
   mkdirSync(dirname(confPath), { recursive: true });
-  writeFileSync(confPath, `${JSON.stringify(conf, null, 2)}\n`, "utf8");
+  writeFileSync(confPath, `${JSON.stringify(conf, null, 2)}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+  });
 }

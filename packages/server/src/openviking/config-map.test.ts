@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -147,6 +147,22 @@ describe("writeOvConf", () => {
     writeOvConf(confPath, conf);
 
     expect(JSON.parse(readFileSync(confPath, "utf8"))).toEqual(conf);
+  });
+
+  it("writes with mode 0o600 when the platform honors file modes", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ov-conf-mode-"));
+    dirs.push(dir);
+    const confPath = join(dir, "ov.conf");
+
+    writeOvConf(confPath, { ok: true });
+
+    const mode = statSync(confPath).mode & 0o777;
+    if (process.platform === "win32") {
+      // Windows may ignore POSIX mode bits; still assert write succeeded.
+      expect(mode).toBeGreaterThanOrEqual(0);
+    } else {
+      expect(mode).toBe(0o600);
+    }
   });
 });
 

@@ -3,7 +3,8 @@ import type { AppConfig, OpenVikingStatus } from "@agent2026/shared";
 import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
 
-const OPENVIKING_DOCS_URL = "https://github.com/volcengine/OpenViking";
+const OPENVIKING_RUNTIME_README_URL =
+  "https://github.com/rainbowchenx/ai-agent/blob/main/packages/openviking-runtime/README.md";
 const OPENVIKING_MCP_URL_DISPLAY = "http://127.0.0.1:1933/mcp";
 
 function statusPillClass(status: OpenVikingStatus): string {
@@ -223,13 +224,15 @@ export function MemorySettingsPanel({
       </div>
 
       <div className="memory-footer">
-        <span className="helper-text">OpenViking 以 AGPLv3 提供。</span>
+        <span className="helper-text">
+          OpenViking 以 AGPLv3 提供。见 docs/learning/P2.5-OPENVIKING.md
+        </span>
         <a
           className="mcp-link"
-          href={OPENVIKING_DOCS_URL}
+          href={OPENVIKING_RUNTIME_README_URL}
           target="_blank"
           rel="noreferrer"
-          title="OpenViking 上游文档（AGPLv3）"
+          title="仓库内 openviking-runtime README（AGPLv3）"
         >
           查看文档
         </a>
