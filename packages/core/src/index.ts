@@ -29,6 +29,7 @@ export {
   type RunnerRunResult,
 } from "./runner/types.js";
 export { ToolRegistry, type ToolHandler } from "./tools/registry.js";
+export { createCompositeToolPort } from "./tools/composite-tool-port.js";
 export {
   assertHttpUrl,
   createBuiltinToolPort,

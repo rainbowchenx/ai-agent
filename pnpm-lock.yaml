@@ -125,6 +125,9 @@ importers:
       '@agent2026/core':
         specifier: workspace:*
         version: link:../core
+      '@agent2026/mcp':
+        specifier: workspace:^
+        version: link:../mcp
       '@agent2026/providers':
         specifier: workspace:*
         version: link:../providers
