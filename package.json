@@ -9,7 +9,8 @@
     "dev:server": "pnpm --filter @agent2026/server dev",
     "dev:desktop": "pnpm --filter @agent2026/desktop dev",
     "smoke:p0": "pnpm --filter @agent2026/server exec tsx --env-file=../../.env ../../scripts/smoke-p0.ts",
-    "smoke:trace": "pnpm --filter @agent2026/server exec tsx ../../scripts/smoke-trace.ts"
+    "smoke:trace": "pnpm --filter @agent2026/server exec tsx ../../scripts/smoke-trace.ts",
+    "ov:sync": "uv sync --project packages/openviking-runtime"
   },
   "devDependencies": {
     "turbo": "^2.5.0",

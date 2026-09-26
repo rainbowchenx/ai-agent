@@ -1,0 +1,11 @@
+[project]
+name = "agent2026-openviking-runtime"
+version = "0.0.0"
+description = "Pinned OpenViking server runtime for agent2026 (AGPLv3). Optional sidecar."
+requires-python = ">=3.11"
+dependencies = [
+  "openviking>=0.1.0",
+]
+
+[project.optional-dependencies]
+# none
