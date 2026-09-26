@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Fastify from "fastify";
-import type { AppConfig, OpenVikingStatusView } from "@agent2026/shared";
+import { defaultAppConfig, type AppConfig, type OpenVikingStatusView } from "@agent2026/shared";
 import type { McpSupervisor } from "../mcp/supervisor.js";
 import type { OpenVikingSupervisor } from "../openviking/supervisor.js";
 import { createApp } from "../app.js";
@@ -161,6 +161,10 @@ describe("OpenViking app wiring", () => {
     dir = await mkdtemp(join(tmpdir(), "agent2026-ov-loop-"));
     let ovCalls = 0;
     let mcpCalls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
 
     const mcp = mockMcp({
       reconcile: async () => {
@@ -175,32 +179,130 @@ describe("OpenViking app wiring", () => {
       mcp,
       skipOpenVikingReconcile: true,
       skipMcpReconcile: true,
-      openViking: {
-        reconcile: async () => {
+      openVikingDeps: {
+        ensureRuntime: async () => {
           ovCalls += 1;
           if (ovCalls > 5) {
             throw new Error("infinite reconcile loop detected");
           }
-          const got = await app.inject({ method: "GET", url: "/config" });
-          const config = got.json<AppConfig>();
-          config.agents.default.systemPrompt = `preset-${ovCalls}`;
-          const put = await app.inject({
-            method: "PUT",
-            url: "/config",
-            payload: config,
-          });
-          expect(put.statusCode).toBe(200);
+          await gate;
         },
-        getStatus: () => readyStatus,
-        shutdown: async () => undefined,
+        healthCheck: async () => true,
+        resolveCredential: () => "sk-test",
       },
     });
 
-    await app.inject({ method: "POST", url: "/openviking/retry" });
+    const enabled = defaultAppConfig();
+    enabled.mcpServers = {
+      openviking: {
+        transport: "http",
+        url: "http://127.0.0.1:1933/mcp",
+        httpSubtype: "streamable",
+        enabled: true,
+      },
+    };
+    enabled.agents.default.tools.mcpServers = ["openviking"];
+
+    const put = await app.inject({
+      method: "PUT",
+      url: "/config",
+      payload: enabled,
+    });
+    expect(put.statusCode).toBe(200);
+
+    await vi.waitFor(() => {
+      expect(ovCalls).toBeGreaterThanOrEqual(1);
+    });
+
+    release();
+    await vi.waitFor(() => {
+      expect(mcpCalls).toBeGreaterThanOrEqual(1);
+    });
     await new Promise((r) => setTimeout(r, 50));
 
-    expect(ovCalls).toBe(1);
-    expect(mcpCalls).toBe(1);
+    expect(ovCalls).toBeLessThanOrEqual(2);
+    expect(mcpCalls).toBeLessThanOrEqual(2);
+
+    await app.close();
+  });
+
+  it("disable during hanging enable settles stopped and keeps enabled=false", async () => {
+    dir = await mkdtemp(join(tmpdir(), "agent2026-ov-race-"));
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const mcp = mockMcp();
+    const app = await createApp({
+      configPath: join(dir, "config.yaml"),
+      credentialsPath: join(dir, "credentials.yaml"),
+      dbPath: join(dir, "data.sqlite"),
+      mcp,
+      skipOpenVikingReconcile: true,
+      skipMcpReconcile: true,
+      openVikingDeps: {
+        ensureRuntime: async () => {
+          await gate;
+        },
+        healthCheck: async () => true,
+        resolveCredential: () => "sk-test",
+      },
+    });
+
+    const enabled = defaultAppConfig();
+    enabled.mcpServers = {
+      openviking: {
+        transport: "http",
+        url: "http://127.0.0.1:1933/mcp",
+        httpSubtype: "streamable",
+        enabled: true,
+      },
+    };
+    enabled.agents.default.tools.mcpServers = ["openviking"];
+
+    const enablePut = await app.inject({
+      method: "PUT",
+      url: "/config",
+      payload: enabled,
+    });
+    expect(enablePut.statusCode).toBe(200);
+
+    await vi.waitFor(async () => {
+      const status = await app.inject({
+        method: "GET",
+        url: "/openviking/status",
+      });
+      expect(status.json()).toMatchObject({
+        status: "starting",
+        enabled: true,
+      });
+    });
+
+    const disabled = structuredClone(enabled);
+    disabled.mcpServers!.openviking!.enabled = false;
+    const disablePut = await app.inject({
+      method: "PUT",
+      url: "/config",
+      payload: disabled,
+    });
+    expect(disablePut.statusCode).toBe(200);
+
+    release();
+
+    await vi.waitFor(async () => {
+      const status = await app.inject({
+        method: "GET",
+        url: "/openviking/status",
+      });
+      expect(status.json()).toMatchObject({
+        status: "stopped",
+        enabled: false,
+      });
+    });
+
+    const got = await app.inject({ method: "GET", url: "/config" });
+    expect(got.json<AppConfig>().mcpServers?.openviking?.enabled).toBe(false);
 
     await app.close();
   });

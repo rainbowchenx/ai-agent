@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultAppConfig, type AppConfig } from "@agent2026/shared";
 import { OPENVIKING_MCP_URL, OPENVIKING_SERVER_NAME } from "./constants.js";
 import {
+  createDefaultOpenVikingHealthCheck,
   createOpenVikingSupervisor,
   type ChildHandle,
   type OpenVikingDeps,
@@ -267,5 +268,76 @@ describe("OpenVikingSupervisor", () => {
       enabled: false,
       ownedProcess: false,
     });
+  });
+
+  it("writeConfigPreset preserves enabled=false when latest config already disabled", async () => {
+    const deps = makeDeps({
+      healthCheck: async () => true,
+    });
+    const supervisor = createOpenVikingSupervisor(deps);
+
+    await supervisor.reconcile(baseConfig(true));
+    expect(deps.writeConfigPreset).toHaveBeenCalledOnce();
+
+    const mutate = deps.writeConfigPreset.mock.calls[0]![0] as (
+      c: AppConfig,
+    ) => AppConfig;
+    const latest = baseConfig(false);
+    latest.mcpServers = {
+      openviking: {
+        transport: "http",
+        url: OPENVIKING_MCP_URL,
+        httpSubtype: "streamable",
+        enabled: false,
+      },
+    };
+    const next = mutate(latest);
+    expect(next.mcpServers?.openviking?.enabled).toBe(false);
+    expect(next.agents.default.tools.mcpServers).toContain("openviking");
+  });
+});
+
+describe("createDefaultOpenVikingHealthCheck", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns false when content-type is not JSON even if status is 200", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        headers: { get: () => "text/plain" },
+        json: async () => ({ status: "ok" }),
+      })),
+    );
+    const check = createDefaultOpenVikingHealthCheck("http://127.0.0.1:9/health");
+    expect(await check()).toBe(false);
+  });
+
+  it("returns true for JSON body with status ok", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        headers: { get: () => "application/json" },
+        json: async () => ({ status: "ok" }),
+      })),
+    );
+    const check = createDefaultOpenVikingHealthCheck("http://127.0.0.1:9/health");
+    expect(await check()).toBe(true);
+  });
+
+  it("returns false for JSON body without ok/healthy status", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        headers: { get: () => "application/json" },
+        json: async () => ({ status: "degraded" }),
+      })),
+    );
+    const check = createDefaultOpenVikingHealthCheck("http://127.0.0.1:9/health");
+    expect(await check()).toBe(false);
   });
 });

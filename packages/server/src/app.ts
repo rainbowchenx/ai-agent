@@ -17,6 +17,7 @@ import {
   createDefaultOpenVikingHealthCheck,
   createDefaultSpawnServer,
   createOpenVikingSupervisor,
+  type OpenVikingDeps,
   type OpenVikingSupervisor,
 } from "./openviking/supervisor.js";
 import { defaultOpenVikingPaths } from "./openviking/paths.js";
@@ -50,6 +51,13 @@ export type CreateAppOptions = {
   skipMcpReconcile?: boolean;
   /** Injected OpenViking supervisor (tests); default creates a real one. */
   openViking?: OpenVikingSupervisor;
+  /**
+   * Partial OV deps overrides (tests). Ignored when `openViking` is injected.
+   * Enables hanging ensureRuntime/health without replacing the whole supervisor.
+   */
+  openVikingDeps?: Partial<
+    Omit<OpenVikingDeps, "writeConfigPreset" | "paths">
+  > & { paths?: OpenVikingDeps["paths"] };
   /** Skip initial OpenViking reconcile (tests that do not need OV). */
   skipOpenVikingReconcile?: boolean;
 };
@@ -72,31 +80,68 @@ export async function createApp(
   const permissionBroker = new PermissionBroker();
   const mcp = options.mcp ?? createMcpSupervisor();
 
-  const paths = defaultOpenVikingPaths();
+  const paths = options.openVikingDeps?.paths ?? defaultOpenVikingPaths();
+  /** Skip onChange → reconcile while writeConfigPreset persists MCP URL. */
+  let applyingPreset = false;
   const openViking =
     options.openViking ??
     createOpenVikingSupervisor({
       paths,
-      resolveCredential: (ref) => credentials.resolve(ref),
-      ensureRuntime: createDefaultEnsureRuntime(paths.runtimeProjectDir),
-      healthCheck: createDefaultOpenVikingHealthCheck(),
-      spawnServer: createDefaultSpawnServer(paths.runtimeProjectDir),
+      resolveCredential:
+        options.openVikingDeps?.resolveCredential ??
+        ((ref) => credentials.resolve(ref)),
+      ensureRuntime:
+        options.openVikingDeps?.ensureRuntime ??
+        createDefaultEnsureRuntime(paths.runtimeProjectDir),
+      healthCheck:
+        options.openVikingDeps?.healthCheck ??
+        createDefaultOpenVikingHealthCheck(),
+      spawnServer:
+        options.openVikingDeps?.spawnServer ??
+        createDefaultSpawnServer(paths.runtimeProjectDir),
+      readyTimeoutMs: options.openVikingDeps?.readyTimeoutMs,
       writeConfigPreset: (mutate) => {
-        configService.set(mutate(configService.get()));
+        applyingPreset = true;
+        try {
+          configService.set(mutate(configService.get()));
+        } finally {
+          applyingPreset = false;
+        }
       },
     });
 
-  /** Guard nested onChange from writeConfigPreset during reconcileAll. */
+  /**
+   * Trailing coalesce: never drop a newer config while reconcile runs.
+   * After the current pass finishes, re-run with the latest queued config.
+   */
   let reconciling = false;
+  let pendingConfig: AppConfig | null = null;
 
   async function reconcileAll(config: AppConfig): Promise<void> {
-    if (reconciling) return;
+    pendingConfig = config;
+    if (reconciling) {
+      // Let OV see the latest immediately so an in-flight enable can abandon.
+      void openViking.reconcile(config).catch(() => undefined);
+      return;
+    }
     reconciling = true;
     try {
-      await openViking.reconcile(config);
-      await mcp.reconcile(configService.get());
+      while (pendingConfig) {
+        const next = pendingConfig;
+        pendingConfig = null;
+        await openViking.reconcile(next);
+        await mcp.reconcile(configService.get());
+      }
     } finally {
       reconciling = false;
+      if (pendingConfig) {
+        void reconcileAll(pendingConfig).catch((error) => {
+          console.warn(
+            "[openviking/mcp] trailing reconcile failed:",
+            error instanceof Error ? error.message : error,
+          );
+        });
+      }
     }
   }
 
@@ -104,13 +149,12 @@ export async function createApp(
   // Status starts empty/connecting; settings + first run see tools once reconcile finishes.
   if (!options.skipOpenVikingReconcile || !options.skipMcpReconcile) {
     void (async () => {
-      if (reconciling) return;
-      reconciling = true;
       try {
-        if (!options.skipOpenVikingReconcile) {
+        if (!options.skipOpenVikingReconcile && !options.skipMcpReconcile) {
+          await reconcileAll(configService.get());
+        } else if (!options.skipOpenVikingReconcile) {
           await openViking.reconcile(configService.get());
-        }
-        if (!options.skipMcpReconcile) {
+        } else {
           await mcp.reconcile(configService.get());
         }
       } catch (error) {
@@ -118,14 +162,12 @@ export async function createApp(
           "[openviking/mcp] initial reconcile failed:",
           error instanceof Error ? error.message : error,
         );
-      } finally {
-        reconciling = false;
       }
     })();
   }
 
   const unsubscribeConfig = configService.onChange((config) => {
-    if (reconciling) return;
+    if (applyingPreset) return;
     void reconcileAll(config).catch((error) => {
       console.warn(
         "[openviking/mcp] reconcile after config change failed:",

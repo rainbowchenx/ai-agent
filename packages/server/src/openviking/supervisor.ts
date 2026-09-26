@@ -45,33 +45,47 @@ function ensureUvErrorMessage(message: string): string {
     : `OpenViking runtime setup failed (uv): ${message}`;
 }
 
-function applyOpenVikingPreset(config: AppConfig): AppConfig {
-  const mcpServers = { ...(config.mcpServers ?? {}) };
-  mcpServers[OPENVIKING_SERVER_NAME] = {
-    transport: "http",
-    url: OPENVIKING_MCP_URL,
-    httpSubtype: "streamable",
-    enabled: true,
-  };
+/**
+ * Ensure HTTP MCP preset exists. Never force-enable over a newer config:
+ * preserve `enabled` when the entry already exists; only use
+ * `startedWithEnabled` when creating a missing entry.
+ */
+function applyOpenVikingPreset(
+  startedWithEnabled: boolean,
+): (config: AppConfig) => AppConfig {
+  return (config: AppConfig) => {
+    const existing = config.mcpServers?.[OPENVIKING_SERVER_NAME];
+    const enabled = existing
+      ? existing.enabled === true
+      : startedWithEnabled;
 
-  const mounted = config.agents.default.tools.mcpServers;
-  const mcpMount = mounted.includes(OPENVIKING_SERVER_NAME)
-    ? mounted
-    : [...mounted, OPENVIKING_SERVER_NAME];
+    const mcpServers = { ...(config.mcpServers ?? {}) };
+    mcpServers[OPENVIKING_SERVER_NAME] = {
+      transport: "http",
+      url: OPENVIKING_MCP_URL,
+      httpSubtype: "streamable",
+      enabled,
+    };
 
-  return {
-    ...config,
-    mcpServers,
-    agents: {
-      ...config.agents,
-      default: {
-        ...config.agents.default,
-        tools: {
-          ...config.agents.default.tools,
-          mcpServers: mcpMount,
+    const mounted = config.agents.default.tools.mcpServers;
+    const mcpMount = mounted.includes(OPENVIKING_SERVER_NAME)
+      ? mounted
+      : [...mounted, OPENVIKING_SERVER_NAME];
+
+    return {
+      ...config,
+      mcpServers,
+      agents: {
+        ...config.agents,
+        default: {
+          ...config.agents.default,
+          tools: {
+            ...config.agents.default.tools,
+            mcpServers: mcpMount,
+          },
         },
       },
-    },
+    };
   };
 }
 
@@ -144,9 +158,10 @@ export function createOpenVikingSupervisor(
       return;
     }
 
-    const enabled = config.mcpServers?.openviking?.enabled === true;
+    const startedWithEnabled =
+      config.mcpServers?.[OPENVIKING_SERVER_NAME]?.enabled === true;
 
-    if (!enabled) {
+    if (!startedWithEnabled) {
       await killOwned();
       if (!isCurrent(gen)) return;
       status = {
@@ -217,7 +232,7 @@ export function createOpenVikingSupervisor(
         ownedProcess: ownedChild !== null,
         mcpUrl: OPENVIKING_MCP_URL,
       };
-      deps.writeConfigPreset(applyOpenVikingPreset);
+      deps.writeConfigPreset(applyOpenVikingPreset(startedWithEnabled));
       return;
     }
 
@@ -265,7 +280,7 @@ export function createOpenVikingSupervisor(
       ownedProcess: true,
       mcpUrl: OPENVIKING_MCP_URL,
     };
-    deps.writeConfigPreset(applyOpenVikingPreset);
+    deps.writeConfigPreset(applyOpenVikingPreset(startedWithEnabled));
   }
 
   return {
@@ -301,11 +316,11 @@ export function createDefaultOpenVikingHealthCheck(
       const res = await fetch(url);
       if (!res.ok) return false;
       const contentType = res.headers.get("content-type") ?? "";
-      if (contentType.includes("application/json")) {
-        const body = (await res.json()) as { status?: string };
-        return body.status === "ok" || body.status === "healthy";
+      if (!contentType.includes("application/json")) {
+        return false;
       }
-      return true;
+      const body = (await res.json()) as { status?: string };
+      return body.status === "ok" || body.status === "healthy";
     } catch {
       return false;
     }
@@ -359,9 +374,20 @@ export function createDefaultSpawnServer(
     return {
       pid,
       async kill() {
-        if (!child.killed) {
-          child.kill();
+        if (child.killed) return;
+        if (process.platform === "win32") {
+          try {
+            await execFileAsync(
+              "taskkill",
+              ["/pid", String(pid), "/T", "/F"],
+              { windowsHide: true },
+            );
+          } catch {
+            child.kill();
+          }
+          return;
         }
+        child.kill();
       },
     };
   };
