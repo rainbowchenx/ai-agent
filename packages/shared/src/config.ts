@@ -36,11 +36,29 @@ const agentConfigSchema = z.object({
   maxToolCalls: z.number().int().positive().nullable().optional(),
 });
 
-const mcpServerConfigSchema = z.object({
+const mcpServerNamePattern = /^[a-zA-Z0-9_-]+$/;
+
+const mcpStdioServerSchema = z.object({
   transport: z.literal("stdio"),
   command: z.string().min(1),
   args: z.array(z.string()),
+  env: z.record(z.string(), z.string()).optional(),
+  cwd: z.string().nullable().optional(),
+  enabled: z.boolean().default(true),
 });
+
+const mcpHttpServerSchema = z.object({
+  transport: z.literal("http"),
+  url: z.string().url(),
+  headers: z.record(z.string(), z.string()).optional(),
+  httpSubtype: z.enum(["streamable", "sse"]).default("streamable"),
+  enabled: z.boolean().default(true),
+});
+
+export const mcpServerConfigSchema = z.discriminatedUnion("transport", [
+  mcpStdioServerSchema,
+  mcpHttpServerSchema,
+]);
 
 export const appConfigSchema = z
   .object({
@@ -81,6 +99,18 @@ export const appConfigSchema = z
       });
     }
 
+    if (config.mcpServers) {
+      for (const serverName of Object.keys(config.mcpServers)) {
+        if (!mcpServerNamePattern.test(serverName)) {
+          ctx.addIssue({
+            code: "custom",
+            message: `mcpServers key "${serverName}" must match [a-zA-Z0-9_-]+`,
+            path: ["mcpServers", serverName],
+          });
+        }
+      }
+    }
+
     const referencedMcpServers = config.agents.default.tools.mcpServers;
 
     if (referencedMcpServers.length > 0) {
@@ -108,6 +138,10 @@ export const appConfigSchema = z
 export type AppConfig = z.infer<typeof appConfigSchema>;
 export type ProviderEntry = z.infer<typeof providerEntrySchema>;
 export type BuiltinToolName = z.infer<typeof builtinToolNameSchema>;
+export type McpServerConfig = z.infer<typeof mcpServerConfigSchema>;
+export type McpStdioServerConfig = z.infer<typeof mcpStdioServerSchema>;
+export type McpHttpServerConfig = z.infer<typeof mcpHttpServerSchema>;
+export type McpTransportKind = McpServerConfig["transport"];
 
 export function defaultAppConfig(): AppConfig {
   const baseUrl =

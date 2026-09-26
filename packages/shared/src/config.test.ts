@@ -80,4 +80,146 @@ describe("parseAppConfig", () => {
       }),
     ).toThrow(/unknown mcpServers entry.*filesystem/);
   });
+
+  it("accepts stdio and http mcpServers and defaults enabled to true", () => {
+    const config = parseAppConfig({
+      providers: {
+        default: "openai",
+        entries: {
+          openai: {
+            type: "openai_compatible",
+            baseUrl: "https://api.openai.com/v1",
+            apiKeyEnv: "OPENAI_API_KEY",
+          },
+        },
+      },
+      agents: {
+        default: {
+          model: "openai/gpt-4.1",
+          systemPrompt: "hi",
+          tools: {
+            builtin: [],
+            mcpServers: ["filesystem", "openviking"],
+            sidecars: [],
+          },
+        },
+      },
+      mcpServers: {
+        filesystem: {
+          transport: "stdio",
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+        },
+        openviking: {
+          transport: "http",
+          url: "http://localhost:1933/mcp",
+        },
+      },
+      permissions: { mode: "default", allowlist: [] },
+      a2a: { enabled: false },
+    });
+
+    expect(config.mcpServers?.filesystem).toMatchObject({
+      transport: "stdio",
+      command: "npx",
+      enabled: true,
+    });
+    expect(config.mcpServers?.openviking).toMatchObject({
+      transport: "http",
+      url: "http://localhost:1933/mcp",
+      enabled: true,
+      httpSubtype: "streamable",
+    });
+  });
+
+  it("rejects http mcpServers missing url", () => {
+    expect(() =>
+      parseAppConfig({
+        providers: {
+          default: "openai",
+          entries: {
+            openai: {
+              type: "openai_compatible",
+              baseUrl: "https://api.openai.com/v1",
+              apiKeyEnv: "OPENAI_API_KEY",
+            },
+          },
+        },
+        agents: {
+          default: {
+            model: "openai/gpt-4.1",
+            systemPrompt: "hi",
+            tools: { builtin: [], mcpServers: [], sidecars: [] },
+          },
+        },
+        mcpServers: {
+          bad: { transport: "http" },
+        },
+        permissions: { mode: "default", allowlist: [] },
+        a2a: { enabled: false },
+      }),
+    ).toThrow();
+  });
+
+  it("rejects unknown mcp transport", () => {
+    expect(() =>
+      parseAppConfig({
+        providers: {
+          default: "openai",
+          entries: {
+            openai: {
+              type: "openai_compatible",
+              baseUrl: "https://api.openai.com/v1",
+              apiKeyEnv: "OPENAI_API_KEY",
+            },
+          },
+        },
+        agents: {
+          default: {
+            model: "openai/gpt-4.1",
+            systemPrompt: "hi",
+            tools: { builtin: [], mcpServers: [], sidecars: [] },
+          },
+        },
+        mcpServers: {
+          bad: { transport: "websocket", command: "x", args: [] },
+        },
+        permissions: { mode: "default", allowlist: [] },
+        a2a: { enabled: false },
+      }),
+    ).toThrow();
+  });
+
+  it("rejects illegal mcpServers key characters", () => {
+    expect(() =>
+      parseAppConfig({
+        providers: {
+          default: "openai",
+          entries: {
+            openai: {
+              type: "openai_compatible",
+              baseUrl: "https://api.openai.com/v1",
+              apiKeyEnv: "OPENAI_API_KEY",
+            },
+          },
+        },
+        agents: {
+          default: {
+            model: "openai/gpt-4.1",
+            systemPrompt: "hi",
+            tools: { builtin: [], mcpServers: [], sidecars: [] },
+          },
+        },
+        mcpServers: {
+          "bad name": {
+            transport: "stdio",
+            command: "npx",
+            args: [],
+          },
+        },
+        permissions: { mode: "default", allowlist: [] },
+        a2a: { enabled: false },
+      }),
+    ).toThrow(/must match/);
+  });
 });
