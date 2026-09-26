@@ -228,4 +228,44 @@ describe("OpenVikingSupervisor", () => {
       ownedProcess: false,
     });
   });
+
+  it("overlapping enable then disable → stopped, no orphan child, no ready overwrite", async () => {
+    let releaseHealth: (() => void) | undefined;
+    const healthGate = new Promise<void>((resolve) => {
+      releaseHealth = resolve;
+    });
+    let healthCalls = 0;
+    const child = mockChild();
+    const deps = makeDeps({
+      healthCheck: async () => {
+        healthCalls += 1;
+        // First call (pre-spawn): not healthy. After spawn, gate then report healthy
+        // so enable can finish unless a newer reconcile/shutdown superseded it.
+        if (healthCalls === 1) return false;
+        await healthGate;
+        return true;
+      },
+      spawnServer: async () => child,
+    });
+    const supervisor = createOpenVikingSupervisor(deps);
+
+    const enablePromise = supervisor.reconcile(baseConfig(true));
+    // Wait until enable has spawned and is blocked in waitUntilHealthy
+    await vi.waitFor(() => {
+      expect(deps.spawnServer).toHaveBeenCalledOnce();
+    });
+
+    const disablePromise = supervisor.reconcile(baseConfig(false));
+    releaseHealth!();
+
+    await Promise.all([enablePromise, disablePromise]);
+
+    expect(child.killed).toBe(true);
+    expect(deps.writeConfigPreset).not.toHaveBeenCalled();
+    expect(supervisor.getStatus()).toMatchObject({
+      status: "stopped",
+      enabled: false,
+      ownedProcess: false,
+    });
+  });
 });

@@ -86,6 +86,24 @@ export function createOpenVikingSupervisor(
   };
   let ownedChild: ChildHandle | null = null;
   let shutDown = false;
+  /** Bumped on every reconcile/shutdown enqueue; stale ops must not commit ready. */
+  let generation = 0;
+  /** Promise-chain mutex so reconcile/shutdown never interleave mutation. */
+  let opChain: Promise<void> = Promise.resolve();
+
+  function isCurrent(gen: number): boolean {
+    return !shutDown && gen === generation;
+  }
+
+  function runExclusive(fn: (gen: number) => Promise<void>): Promise<void> {
+    const gen = ++generation;
+    const run = opChain.then(() => fn(gen));
+    opChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
 
   async function killOwned(): Promise<void> {
     if (!ownedChild) return;
@@ -95,28 +113,173 @@ export function createOpenVikingSupervisor(
     await child.kill().catch(() => undefined);
   }
 
-  async function waitUntilHealthy(timeoutMs: number): Promise<boolean> {
+  /** If this generation no longer owns the op, kill any child we hold and bail. */
+  async function abandonIfStale(gen: number): Promise<boolean> {
+    if (isCurrent(gen)) return false;
+    await killOwned();
+    return true;
+  }
+
+  async function waitUntilHealthy(
+    timeoutMs: number,
+    gen: number,
+  ): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
-      if (await deps.healthCheck()) {
-        return true;
+      if (!isCurrent(gen)) {
+        return false;
       }
-      if (Date.now() >= deadline) {
+      if (await deps.healthCheck()) {
+        return isCurrent(gen);
+      }
+      if (!isCurrent(gen) || Date.now() >= deadline) {
         return false;
       }
       await sleep(HEALTH_POLL_INTERVAL_MS);
     }
   }
 
+  async function reconcileBody(config: AppConfig, gen: number): Promise<void> {
+    if (!isCurrent(gen)) {
+      return;
+    }
+
+    const enabled = config.mcpServers?.openviking?.enabled === true;
+
+    if (!enabled) {
+      await killOwned();
+      if (!isCurrent(gen)) return;
+      status = {
+        status: "stopped",
+        enabled: false,
+        ownedProcess: false,
+        mcpUrl: OPENVIKING_MCP_URL,
+      };
+      return;
+    }
+
+    status = {
+      status: "starting",
+      enabled: true,
+      ownedProcess: ownedChild !== null,
+      mcpUrl: OPENVIKING_MCP_URL,
+    };
+
+    try {
+      await deps.ensureRuntime();
+    } catch (error) {
+      if (await abandonIfStale(gen)) return;
+      const message =
+        error instanceof Error ? error.message : String(error);
+      status = {
+        status: "error",
+        enabled: true,
+        ownedProcess: ownedChild !== null,
+        mcpUrl: OPENVIKING_MCP_URL,
+        lastError: ensureUvErrorMessage(message),
+      };
+      return;
+    }
+    if (await abandonIfStale(gen)) return;
+
+    const defaultName = config.providers.default;
+    const entry = config.providers.entries[defaultName];
+    const apiKey = entry
+      ? deps.resolveCredential(entry.apiKeyEnv)
+      : undefined;
+
+    const mapped = mapProviderToOvConf({
+      config,
+      apiKey,
+      dataDir: deps.paths.dataDir,
+    });
+
+    if (!mapped.ok) {
+      if (!isCurrent(gen)) return;
+      status = {
+        status: "needs_config",
+        enabled: true,
+        ownedProcess: ownedChild !== null,
+        mcpUrl: OPENVIKING_MCP_URL,
+        lastError: mapped.reason,
+      };
+      return;
+    }
+
+    writeOvConf(deps.paths.confPath, mapped.conf);
+
+    const healthy = await deps.healthCheck();
+    if (await abandonIfStale(gen)) return;
+    if (healthy) {
+      status = {
+        status: "ready",
+        enabled: true,
+        ownedProcess: ownedChild !== null,
+        mcpUrl: OPENVIKING_MCP_URL,
+      };
+      deps.writeConfigPreset(applyOpenVikingPreset);
+      return;
+    }
+
+    try {
+      await killOwned();
+      if (await abandonIfStale(gen)) return;
+      ownedChild = await deps.spawnServer({
+        confPath: deps.paths.confPath,
+        port: OPENVIKING_PORT,
+      });
+    } catch (error) {
+      if (await abandonIfStale(gen)) return;
+      const message =
+        error instanceof Error ? error.message : String(error);
+      status = {
+        status: "error",
+        enabled: true,
+        ownedProcess: false,
+        mcpUrl: OPENVIKING_MCP_URL,
+        lastError: message,
+      };
+      return;
+    }
+    if (await abandonIfStale(gen)) return;
+
+    const readyTimeout = deps.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS;
+    const becameHealthy = await waitUntilHealthy(readyTimeout, gen);
+    if (await abandonIfStale(gen)) return;
+    if (!becameHealthy) {
+      await killOwned();
+      if (!isCurrent(gen)) return;
+      status = {
+        status: "error",
+        enabled: true,
+        ownedProcess: false,
+        mcpUrl: OPENVIKING_MCP_URL,
+        lastError: `OpenViking health check timed out after ${readyTimeout}ms`,
+      };
+      return;
+    }
+
+    status = {
+      status: "ready",
+      enabled: true,
+      ownedProcess: true,
+      mcpUrl: OPENVIKING_MCP_URL,
+    };
+    deps.writeConfigPreset(applyOpenVikingPreset);
+  }
+
   return {
-    async reconcile(config) {
-      if (shutDown) {
-        return;
-      }
+    reconcile(config) {
+      return runExclusive((gen) => reconcileBody(config, gen));
+    },
 
-      const enabled = config.mcpServers?.openviking?.enabled === true;
+    getStatus() {
+      return { ...status };
+    },
 
-      if (!enabled) {
+    shutdown() {
+      shutDown = true;
+      return runExclusive(async () => {
         await killOwned();
         status = {
           status: "stopped",
@@ -124,123 +287,7 @@ export function createOpenVikingSupervisor(
           ownedProcess: false,
           mcpUrl: OPENVIKING_MCP_URL,
         };
-        return;
-      }
-
-      status = {
-        status: "starting",
-        enabled: true,
-        ownedProcess: ownedChild !== null,
-        mcpUrl: OPENVIKING_MCP_URL,
-      };
-
-      try {
-        await deps.ensureRuntime();
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : String(error);
-        status = {
-          status: "error",
-          enabled: true,
-          ownedProcess: ownedChild !== null,
-          mcpUrl: OPENVIKING_MCP_URL,
-          lastError: ensureUvErrorMessage(message),
-        };
-        return;
-      }
-
-      const defaultName = config.providers.default;
-      const entry = config.providers.entries[defaultName];
-      const apiKey = entry
-        ? deps.resolveCredential(entry.apiKeyEnv)
-        : undefined;
-
-      const mapped = mapProviderToOvConf({
-        config,
-        apiKey,
-        dataDir: deps.paths.dataDir,
       });
-
-      if (!mapped.ok) {
-        status = {
-          status: "needs_config",
-          enabled: true,
-          ownedProcess: ownedChild !== null,
-          mcpUrl: OPENVIKING_MCP_URL,
-          lastError: mapped.reason,
-        };
-        return;
-      }
-
-      writeOvConf(deps.paths.confPath, mapped.conf);
-
-      const healthy = await deps.healthCheck();
-      if (healthy) {
-        status = {
-          status: "ready",
-          enabled: true,
-          ownedProcess: ownedChild !== null,
-          mcpUrl: OPENVIKING_MCP_URL,
-        };
-        deps.writeConfigPreset(applyOpenVikingPreset);
-        return;
-      }
-
-      try {
-        await killOwned();
-        ownedChild = await deps.spawnServer({
-          confPath: deps.paths.confPath,
-          port: OPENVIKING_PORT,
-        });
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : String(error);
-        status = {
-          status: "error",
-          enabled: true,
-          ownedProcess: false,
-          mcpUrl: OPENVIKING_MCP_URL,
-          lastError: message,
-        };
-        return;
-      }
-
-      const readyTimeout = deps.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS;
-      const becameHealthy = await waitUntilHealthy(readyTimeout);
-      if (!becameHealthy) {
-        await killOwned();
-        status = {
-          status: "error",
-          enabled: true,
-          ownedProcess: false,
-          mcpUrl: OPENVIKING_MCP_URL,
-          lastError: `OpenViking health check timed out after ${readyTimeout}ms`,
-        };
-        return;
-      }
-
-      status = {
-        status: "ready",
-        enabled: true,
-        ownedProcess: true,
-        mcpUrl: OPENVIKING_MCP_URL,
-      };
-      deps.writeConfigPreset(applyOpenVikingPreset);
-    },
-
-    getStatus() {
-      return { ...status };
-    },
-
-    async shutdown() {
-      shutDown = true;
-      await killOwned();
-      status = {
-        status: "stopped",
-        enabled: false,
-        ownedProcess: false,
-        mcpUrl: OPENVIKING_MCP_URL,
-      };
     },
   };
 }
