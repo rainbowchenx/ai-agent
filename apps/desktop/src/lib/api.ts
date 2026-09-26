@@ -9,6 +9,7 @@ import type {
   ListMcpStatusResponse,
   ListSessionRunsResponse,
   ListSessionsResponse,
+  OpenVikingStatusView,
   RefreshMcpResponse,
   StopRunResponse,
   SystemPathsResponse,
@@ -186,4 +187,27 @@ export async function refreshMcpServer(
     throw new Error(`mcp refresh ${res.status}${text ? ` — ${text}` : ""}`);
   }
   return (await res.json()) as RefreshMcpResponse;
+}
+
+export async function fetchOpenVikingStatus(
+  baseUrl: string,
+): Promise<OpenVikingStatusView> {
+  const res = await fetch(`${baseUrl}/openviking/status`);
+  if (!res.ok) {
+    throw new Error(`openviking status ${res.status}`);
+  }
+  return (await res.json()) as OpenVikingStatusView;
+}
+
+export async function retryOpenViking(
+  baseUrl: string,
+): Promise<OpenVikingStatusView> {
+  const res = await fetch(`${baseUrl}/openviking/retry`, { method: "POST" });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `openviking retry ${res.status}${text ? ` — ${text}` : ""}`,
+    );
+  }
+  return (await res.json()) as OpenVikingStatusView;
 }

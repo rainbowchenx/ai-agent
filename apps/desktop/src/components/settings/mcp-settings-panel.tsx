@@ -326,6 +326,11 @@ export function McpSettingsPanel({
                   <div className="mcp-server-summary">
                     {summarizeServer(serverConfig)}
                   </div>
+                  {name === "openviking" ? (
+                    <div className="mcp-managed-hint">
+                      由长期记忆管理启停
+                    </div>
+                  ) : null}
                   {status?.lastError && resolvedStatus === "error" ? (
                     <div className="mcp-error">{status.lastError}</div>
                   ) : null}

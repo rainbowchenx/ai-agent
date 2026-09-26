@@ -3,6 +3,7 @@ import type {
   CredentialInfo,
   McpServerConfig,
   McpServerStatusView,
+  OpenVikingStatusView,
   SystemPathsResponse,
 } from "@agent2026/shared";
 import { create } from "zustand";
@@ -10,12 +11,17 @@ import {
   fetchConfig,
   fetchCredentials,
   fetchMcpStatus,
+  fetchOpenVikingStatus,
   fetchSystem,
   putConfig,
   putCredential,
   refreshMcpServer,
+  retryOpenViking,
 } from "@/lib/api";
 import { useSessionStore } from "@/stores/session-store";
+
+const OPENVIKING_SERVER_NAME = "openviking";
+const OPENVIKING_MCP_URL = "http://127.0.0.1:1933/mcp";
 
 export type ProviderSaveInput = {
   providerId: string;
@@ -47,17 +53,30 @@ export type McpServerSaveInput = {
   mount: boolean;
 };
 
+export type OpenVikingOverridesInput = {
+  embeddingModel: string;
+  vlmModel: string;
+};
+
 type SettingsStore = {
   config: AppConfig | null;
   credentials: Record<string, CredentialInfo>;
   system: SystemPathsResponse | null;
   mcpStatus: McpServerStatusView[];
+  openVikingStatus: OpenVikingStatusView | null;
   loading: boolean;
   saving: boolean;
   error: string | null;
   saveHint: string | null;
   hydrate: (baseUrl: string) => Promise<void>;
   refreshMcpStatus: (baseUrl: string) => Promise<void>;
+  refreshOpenVikingStatus: (baseUrl: string) => Promise<void>;
+  retryOpenVikingStatus: (baseUrl: string) => Promise<void>;
+  setOpenVikingEnabled: (baseUrl: string, enabled: boolean) => Promise<void>;
+  saveOpenVikingOverrides: (
+    baseUrl: string,
+    input: OpenVikingOverridesInput,
+  ) => Promise<void>;
   saveProvider: (baseUrl: string, input: ProviderSaveInput) => Promise<void>;
   saveAgent: (baseUrl: string, input: AgentSaveInput) => Promise<void>;
   savePermissions: (
@@ -99,6 +118,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   credentials: {},
   system: null,
   mcpStatus: [],
+  openVikingStatus: null,
   loading: false,
   saving: false,
   error: null,
@@ -112,18 +132,21 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
     set({ loading: true, error: null });
     try {
-      const [config, creds, system, mcpStatus] = await Promise.all([
-        fetchConfig(baseUrl),
-        fetchCredentials(baseUrl),
-        fetchSystem(baseUrl).catch(() => null),
-        fetchMcpStatus(baseUrl).catch(() => [] as McpServerStatusView[]),
-      ]);
+      const [config, creds, system, mcpStatus, openVikingStatus] =
+        await Promise.all([
+          fetchConfig(baseUrl),
+          fetchCredentials(baseUrl),
+          fetchSystem(baseUrl).catch(() => null),
+          fetchMcpStatus(baseUrl).catch(() => [] as McpServerStatusView[]),
+          fetchOpenVikingStatus(baseUrl).catch(() => null),
+        ]);
       syncSessionConfig(config);
       set({
         config,
         credentials: credentialsToMap(creds.items),
         system,
         mcpStatus,
+        openVikingStatus,
         loading: false,
         error: null,
       });
@@ -143,6 +166,172 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       set({
         error: err instanceof Error ? err.message : String(err),
       });
+    }
+  },
+
+  refreshOpenVikingStatus: async (baseUrl) => {
+    try {
+      const openVikingStatus = await fetchOpenVikingStatus(baseUrl);
+      set({ openVikingStatus });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  },
+
+  retryOpenVikingStatus: async (baseUrl) => {
+    set({ saving: true, error: null, saveHint: null });
+    try {
+      const openVikingStatus = await retryOpenViking(baseUrl);
+      const mcpStatus = await fetchMcpStatus(baseUrl).catch(
+        () => get().mcpStatus,
+      );
+      set({
+        openVikingStatus,
+        mcpStatus,
+        saving: false,
+        saveHint: "已重试 OpenViking",
+        error: null,
+      });
+    } catch (err) {
+      set({
+        saving: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
+  },
+
+  setOpenVikingEnabled: async (baseUrl, enabled) => {
+    const current = ensureConfig(get().config);
+    set({ saving: true, error: null, saveHint: null });
+    try {
+      const servers = { ...(current.mcpServers ?? {}) };
+      const existing = servers[OPENVIKING_SERVER_NAME];
+      if (enabled) {
+        servers[OPENVIKING_SERVER_NAME] = {
+          transport: "http",
+          url: OPENVIKING_MCP_URL,
+          httpSubtype: "streamable",
+          enabled: true,
+          ...(existing && existing.transport === "http" && existing.headers
+            ? { headers: existing.headers }
+            : {}),
+        };
+      } else if (existing) {
+        servers[OPENVIKING_SERVER_NAME] = { ...existing, enabled: false };
+      } else {
+        servers[OPENVIKING_SERVER_NAME] = {
+          transport: "http",
+          url: OPENVIKING_MCP_URL,
+          httpSubtype: "streamable",
+          enabled: false,
+        };
+      }
+
+      let mounted = [...current.agents.default.tools.mcpServers];
+      if (enabled) {
+        if (!mounted.includes(OPENVIKING_SERVER_NAME)) {
+          mounted = [...mounted, OPENVIKING_SERVER_NAME];
+        }
+      }
+
+      const next: AppConfig = {
+        ...current,
+        mcpServers: servers,
+        agents: {
+          ...current.agents,
+          default: {
+            ...current.agents.default,
+            tools: {
+              ...current.agents.default.tools,
+              mcpServers: mounted,
+            },
+          },
+        },
+      };
+      const saved = await putConfig(baseUrl, next);
+      const openVikingStatus = enabled
+        ? await retryOpenViking(baseUrl).catch(() =>
+            fetchOpenVikingStatus(baseUrl),
+          )
+        : await fetchOpenVikingStatus(baseUrl).catch(
+            () => get().openVikingStatus,
+          );
+      const mcpStatus = await fetchMcpStatus(baseUrl).catch(
+        () => get().mcpStatus,
+      );
+      syncSessionConfig(saved);
+      set({
+        config: saved,
+        openVikingStatus,
+        mcpStatus,
+        saving: false,
+        saveHint: enabled
+          ? "已启用 OpenViking，正在准备…"
+          : "已禁用 OpenViking",
+        error: null,
+      });
+    } catch (err) {
+      set({
+        saving: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
+  },
+
+  saveOpenVikingOverrides: async (baseUrl, input) => {
+    const current = ensureConfig(get().config);
+    set({ saving: true, error: null, saveHint: null });
+    try {
+      const embeddingModel = input.embeddingModel.trim();
+      const vlmModel = input.vlmModel.trim();
+      const openviking = {
+        ...(current.openviking ?? {}),
+        ...(embeddingModel
+          ? { embeddingModel }
+          : { embeddingModel: undefined }),
+        ...(vlmModel ? { vlmModel } : { vlmModel: undefined }),
+      };
+      const hasOverrides =
+        Boolean(openviking.embeddingModel) ||
+        Boolean(openviking.vlmModel) ||
+        openviking.embeddingDimension != null;
+
+      const next: AppConfig = {
+        ...current,
+        openviking: hasOverrides
+          ? {
+              ...(openviking.embeddingModel
+                ? { embeddingModel: openviking.embeddingModel }
+                : {}),
+              ...(openviking.vlmModel ? { vlmModel: openviking.vlmModel } : {}),
+              ...(openviking.embeddingDimension != null
+                ? { embeddingDimension: openviking.embeddingDimension }
+                : {}),
+            }
+          : undefined,
+      };
+      const saved = await putConfig(baseUrl, next);
+      const openVikingStatus = await fetchOpenVikingStatus(baseUrl).catch(
+        () => get().openVikingStatus,
+      );
+      syncSessionConfig(saved);
+      set({
+        config: saved,
+        openVikingStatus,
+        saving: false,
+        saveHint: "已保存 OpenViking 模型覆盖",
+        error: null,
+      });
+    } catch (err) {
+      set({
+        saving: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
     }
   },
 

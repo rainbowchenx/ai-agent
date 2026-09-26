@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { AppConfig, CredentialInfo } from "@agent2026/shared";
 import {
   Bot,
+  Brain,
   Check,
   Cpu,
   Info,
@@ -18,6 +19,7 @@ import { useSessionStore } from "@/stores/session-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUiStore } from "@/stores/ui-store";
 import { McpSettingsPanel } from "./mcp-settings-panel";
+import { MemorySettingsPanel } from "./memory-settings-panel";
 
 const SECTIONS = [
   { id: "section-models", label: "模型与 Provider", icon: Cpu },
@@ -25,6 +27,7 @@ const SECTIONS = [
   { id: "section-permissions", label: "权限", icon: Shield },
   { id: "section-appearance", label: "外观", icon: Palette },
   { id: "section-mcp", label: "MCP", icon: Puzzle },
+  { id: "section-memory", label: "长期记忆", icon: Brain },
   { id: "section-advanced", label: "高级", icon: SlidersHorizontal },
   { id: "section-about", label: "关于", icon: Info },
 ] as const;
@@ -749,6 +752,28 @@ export function SettingsPage() {
                 <div className="section-body">
                   {config && baseUrl ? (
                     <McpSettingsPanel baseUrl={baseUrl} config={config} />
+                  ) : (
+                    <p className="helper-text">加载配置中…</p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="settings-section" id="section-memory">
+              <div className="section-card">
+                <div className="section-header">
+                  <h2 className="section-title">长期记忆</h2>
+                  <p className="section-subtitle">
+                    跨会话检索/写入走 OpenViking（AGPLv3 可选）
+                  </p>
+                </div>
+                <div className="section-body">
+                  {config && baseUrl ? (
+                    <MemorySettingsPanel
+                      baseUrl={baseUrl}
+                      config={config}
+                      onScrollToModels={() => scrollTo("section-models")}
+                    />
                   ) : (
                     <p className="helper-text">加载配置中…</p>
                   )}
