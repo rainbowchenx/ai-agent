@@ -37,6 +37,8 @@ export {
   type McpServerStatus,
   type McpServerStatusView,
   type McpToolStatusView,
+  type OpenVikingStatus,
+  type OpenVikingStatusView,
   type MessageDto,
   type MessageRole,
   type PermissionWsResponse,

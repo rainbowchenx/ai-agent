@@ -120,3 +120,18 @@ export type RefreshMcpResponse = {
   ok: true;
   status: McpServerStatusView;
 };
+
+export type OpenVikingStatus =
+  | "stopped"
+  | "starting"
+  | "ready"
+  | "needs_config"
+  | "error";
+
+export type OpenVikingStatusView = {
+  status: OpenVikingStatus;
+  enabled: boolean;
+  ownedProcess: boolean;
+  mcpUrl: string;
+  lastError?: string;
+};

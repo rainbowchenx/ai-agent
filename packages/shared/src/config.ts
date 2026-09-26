@@ -77,6 +77,13 @@ export const appConfigSchema = z
     a2a: z.object({
       enabled: z.boolean(),
     }),
+    openviking: z
+      .object({
+        embeddingModel: z.string().min(1).optional(),
+        vlmModel: z.string().min(1).optional(),
+        embeddingDimension: z.number().int().positive().optional(),
+      })
+      .optional(),
   })
   .superRefine((config, ctx) => {
     const { default: defaultProvider, entries } = config.providers;

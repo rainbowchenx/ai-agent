@@ -190,6 +190,18 @@ describe("parseAppConfig", () => {
     ).toThrow();
   });
 
+  it("accepts optional openviking model overrides", () => {
+    const config = parseAppConfig({
+      ...defaultAppConfig(),
+      openviking: {
+        embeddingModel: "text-embedding-3-small",
+        vlmModel: "gpt-4.1",
+        embeddingDimension: 1536,
+      },
+    });
+    expect(config.openviking?.embeddingModel).toBe("text-embedding-3-small");
+  });
+
   it("rejects illegal mcpServers key characters", () => {
     expect(() =>
       parseAppConfig({
