@@ -26,6 +26,14 @@ export type OvConf = {
   };
 };
 
+export type MapToOvConfInput = {
+  config: AppConfig;
+  embeddingApiKey: string | undefined;
+  chatApiKey: string | undefined;
+  dataDir: string;
+};
+
+/** @deprecated Use MapToOvConfInput — kept for call-site transition. */
 export type MapProviderToOvConfInput = {
   config: AppConfig;
   apiKey: string | undefined;
@@ -36,34 +44,28 @@ export type MapProviderToOvConfResult =
   | { ok: true; conf: OvConf }
   | { ok: false; reason: string };
 
-function inferOvProvider(entry: ProviderEntry): OvProvider {
-  if (entry.type === "anthropic") {
-    return "openai";
-  }
-  const base = entry.baseUrl ?? "";
-  if (/volces\.com|bytepluses\.com/i.test(base)) {
+function inferOvProviderFromBaseUrl(baseUrl: string): OvProvider {
+  if (/volces\.com|bytepluses\.com/i.test(baseUrl)) {
     return "volcengine";
   }
   return "openai";
 }
 
+function inferOvProvider(entry: ProviderEntry): OvProvider {
+  if (entry.type === "anthropic") {
+    return "openai";
+  }
+  return inferOvProviderFromBaseUrl(entry.baseUrl ?? "");
+}
+
 function embeddingDefaults(provider: OvProvider): {
-  model: string;
   dimension: number;
   input: "text" | "multimodal";
 } {
   if (provider === "volcengine") {
-    return {
-      model: "doubao-embedding-vision-251215",
-      dimension: 1024,
-      input: "multimodal",
-    };
+    return { dimension: 1024, input: "multimodal" };
   }
-  return {
-    model: "text-embedding-3-small",
-    dimension: 1536,
-    input: "text",
-  };
+  return { dimension: 1536, input: "text" };
 }
 
 function modelNameSegment(modelRef: string): string {
@@ -71,10 +73,24 @@ function modelNameSegment(modelRef: string): string {
   return slash >= 0 ? modelRef.slice(slash + 1) : modelRef;
 }
 
-export function mapProviderToOvConf(
-  input: MapProviderToOvConfInput,
-): MapProviderToOvConfResult {
-  const { config, apiKey, dataDir } = input;
+export function mapToOvConf(input: MapToOvConfInput): MapProviderToOvConfResult {
+  const { config, embeddingApiKey, chatApiKey, dataDir } = input;
+  const embedding = config.openviking?.embedding;
+
+  if (!embedding?.baseUrl || !embedding.model || !embedding.apiKeyEnv) {
+    return {
+      ok: false,
+      reason: "请配置独立 Embedding（baseUrl / model / apiKeyEnv）",
+    };
+  }
+
+  if (!embeddingApiKey) {
+    return {
+      ok: false,
+      reason: `缺少 Embedding API Key（${embedding.apiKeyEnv}）`,
+    };
+  }
+
   const defaultName = config.providers.default;
   const entry = config.providers.entries[defaultName];
 
@@ -85,34 +101,35 @@ export function mapProviderToOvConf(
     };
   }
 
-  if (!apiKey) {
+  if (!chatApiKey) {
     return {
       ok: false,
       reason: `缺少 Provider API Key（${entry.apiKeyEnv}）`,
     };
   }
 
-  const ovProvider = inferOvProvider(entry);
-  const defaults = embeddingDefaults(ovProvider);
+  const embProvider =
+    embedding.provider ?? inferOvProviderFromBaseUrl(embedding.baseUrl);
+  const embDefaults = embeddingDefaults(embProvider);
   const overrides = config.openviking;
-  const apiBase = entry.baseUrl;
+  const vlmProvider = inferOvProvider(entry);
 
   const conf: OvConf = {
     embedding: {
       dense: {
-        provider: ovProvider,
-        model: overrides?.embeddingModel ?? defaults.model,
-        api_base: apiBase,
-        api_key: apiKey,
-        dimension: overrides?.embeddingDimension ?? defaults.dimension,
-        input: defaults.input,
+        provider: embProvider,
+        model: embedding.model,
+        api_base: embedding.baseUrl,
+        api_key: embeddingApiKey,
+        dimension: embedding.dimension ?? embDefaults.dimension,
+        input: embDefaults.input,
       },
     },
     vlm: {
-      provider: ovProvider,
+      provider: vlmProvider,
       model: overrides?.vlmModel ?? modelNameSegment(config.agents.default.model),
-      api_base: apiBase,
-      api_key: apiKey,
+      api_base: entry.baseUrl,
+      api_key: chatApiKey,
     },
     storage: {
       workspace: dataDir,
@@ -120,6 +137,21 @@ export function mapProviderToOvConf(
   };
 
   return { ok: true, conf };
+}
+
+/**
+ * @deprecated Prefer mapToOvConf. Forwards chat apiKey as both keys only when
+ * independent embedding is absent (always fails mapping without embedding block).
+ */
+export function mapProviderToOvConf(
+  input: MapProviderToOvConfInput,
+): MapProviderToOvConfResult {
+  return mapToOvConf({
+    config: input.config,
+    embeddingApiKey: input.apiKey,
+    chatApiKey: input.apiKey,
+    dataDir: input.dataDir,
+  });
 }
 
 export function writeOvConf(confPath: string, conf: object): void {

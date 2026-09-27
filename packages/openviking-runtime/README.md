@@ -37,8 +37,12 @@ Runtime data and generated config live under:
 ~/.agent2026/openviking/
 ```
 
-- `ov.conf` — OpenViking server configuration (written by Agent Server from your Provider settings)
+- `ov.conf` — OpenViking server configuration (written by Agent Server)
+  - `embedding.dense` ← **independent** `openviking.embedding` (baseUrl / model / apiKeyEnv)
+  - `vlm` ← default chat Provider (unchanged)
 - `data/` — OpenViking workspace storage
+
+Configure embedding under Desktop **Settings → Long-term memory**. Do not point embedding at chat-only APIs (e.g. DeepSeek). See `docs/learning/P2.5b-OPENVIKING-EMBEDDING.md`.
 
 This is separate from the main agent SQLite session store.
 

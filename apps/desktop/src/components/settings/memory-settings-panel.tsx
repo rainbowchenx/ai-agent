@@ -10,6 +10,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 const OPENVIKING_RUNTIME_README_URL =
   "https://github.com/rainbowchenx/ai-agent/blob/main/packages/openviking-runtime/README.md";
 const OPENVIKING_MCP_URL_DISPLAY = "http://127.0.0.1:1933/mcp";
+const DEFAULT_EMBEDDING_API_KEY_ENV = "OPENVIKING_EMBEDDING_API_KEY";
 
 function statusPillClass(status: OpenVikingStatus): string {
   switch (status) {
@@ -38,7 +39,7 @@ function statusDetailText(
     return lastError;
   }
   if (status === "needs_config") {
-    return "需要配置 Provider / API Key";
+    return "需要配置独立 Embedding 与 Provider API Key";
   }
   if (status === "starting") {
     return "正在准备…";
@@ -71,9 +72,13 @@ export function MemorySettingsPanel({
 }) {
   const openVikingStatus = useSettingsStore((s) => s.openVikingStatus);
   const distillStatus = useSettingsStore((s) => s.distillStatus);
+  const credentials = useSettingsStore((s) => s.credentials);
   const saving = useSettingsStore((s) => s.saving);
   const setOpenVikingEnabled = useSettingsStore((s) => s.setOpenVikingEnabled);
   const setAutoDistill = useSettingsStore((s) => s.setAutoDistill);
+  const saveOpenVikingEmbedding = useSettingsStore(
+    (s) => s.saveOpenVikingEmbedding,
+  );
   const saveOpenVikingOverrides = useSettingsStore(
     (s) => s.saveOpenVikingOverrides,
   );
@@ -90,15 +95,54 @@ export function MemorySettingsPanel({
   const autoDistill = config.openviking?.autoDistill !== false;
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [embeddingModel, setEmbeddingModel] = useState(
-    config.openviking?.embeddingModel ?? "",
+  const [embBaseUrl, setEmbBaseUrl] = useState(
+    config.openviking?.embedding?.baseUrl ?? "",
   );
+  const [embModel, setEmbModel] = useState(
+    config.openviking?.embedding?.model ??
+      config.openviking?.embeddingModel ??
+      "",
+  );
+  const [embApiKeyEnv, setEmbApiKeyEnv] = useState(
+    config.openviking?.embedding?.apiKeyEnv ?? DEFAULT_EMBEDDING_API_KEY_ENV,
+  );
+  const [embDimension, setEmbDimension] = useState(
+    config.openviking?.embedding?.dimension != null
+      ? String(config.openviking.embedding.dimension)
+      : config.openviking?.embeddingDimension != null
+        ? String(config.openviking.embeddingDimension)
+        : "",
+  );
+  const [embApiKeyDraft, setEmbApiKeyDraft] = useState("");
   const [vlmModel, setVlmModel] = useState(config.openviking?.vlmModel ?? "");
 
   useEffect(() => {
-    setEmbeddingModel(config.openviking?.embeddingModel ?? "");
+    setEmbBaseUrl(config.openviking?.embedding?.baseUrl ?? "");
+    setEmbModel(
+      config.openviking?.embedding?.model ??
+        config.openviking?.embeddingModel ??
+        "",
+    );
+    setEmbApiKeyEnv(
+      config.openviking?.embedding?.apiKeyEnv ?? DEFAULT_EMBEDDING_API_KEY_ENV,
+    );
+    setEmbDimension(
+      config.openviking?.embedding?.dimension != null
+        ? String(config.openviking.embedding.dimension)
+        : config.openviking?.embeddingDimension != null
+          ? String(config.openviking.embeddingDimension)
+          : "",
+    );
     setVlmModel(config.openviking?.vlmModel ?? "");
-  }, [config.openviking?.embeddingModel, config.openviking?.vlmModel]);
+  }, [
+    config.openviking?.embedding?.baseUrl,
+    config.openviking?.embedding?.model,
+    config.openviking?.embedding?.apiKeyEnv,
+    config.openviking?.embedding?.dimension,
+    config.openviking?.embeddingModel,
+    config.openviking?.embeddingDimension,
+    config.openviking?.vlmModel,
+  ]);
 
   useEffect(() => {
     if (!baseUrl || openVikingStatus?.status !== "starting") {
@@ -121,6 +165,8 @@ export function MemorySettingsPanel({
     : null;
   const mcpUrl = openVikingStatus?.mcpUrl ?? OPENVIKING_MCP_URL_DISPLAY;
   const lastDistill = distillStatus ? distillStatusText(distillStatus) : null;
+  const embCredential = credentials[embApiKeyEnv.trim()];
+  const embKeyFromEnv = embCredential?.source === "env";
 
   return (
     <div className="memory-panel" data-settings-memory-panel>
@@ -172,6 +218,114 @@ export function MemorySettingsPanel({
         </label>
       </div>
 
+      <div className="memory-embedding-block">
+        <div className="switch-label">
+          <span className="switch-title">Embedding（独立端点）</span>
+          <span className="switch-desc">
+            语义检索专用；勿填对话模型 API（如 DeepSeek）。密钥走 credentials /
+            环境变量。
+          </span>
+        </div>
+        <div className="field-group input-medium">
+          <label className="field-label" htmlFor="ov-emb-base-url">
+            Base URL
+          </label>
+          <input
+            className="text-input"
+            id="ov-emb-base-url"
+            value={embBaseUrl}
+            placeholder="https://api.openai.com/v1"
+            onChange={(event) => setEmbBaseUrl(event.target.value)}
+          />
+        </div>
+        <div className="field-group input-medium">
+          <label className="field-label" htmlFor="ov-emb-model">
+            模型名
+          </label>
+          <input
+            className="text-input"
+            id="ov-emb-model"
+            value={embModel}
+            placeholder="text-embedding-3-small"
+            onChange={(event) => setEmbModel(event.target.value)}
+          />
+        </div>
+        <div className="field-group input-medium">
+          <label className="field-label" htmlFor="ov-emb-api-key-env">
+            API Key 环境变量
+          </label>
+          <input
+            className="text-input"
+            id="ov-emb-api-key-env"
+            value={embApiKeyEnv}
+            placeholder={DEFAULT_EMBEDDING_API_KEY_ENV}
+            onChange={(event) => setEmbApiKeyEnv(event.target.value)}
+          />
+        </div>
+        <div className="field-group input-medium">
+          <label className="field-label" htmlFor="ov-emb-api-key">
+            API Key
+          </label>
+          <input
+            className="text-input"
+            id="ov-emb-api-key"
+            type="password"
+            value={embApiKeyDraft}
+            placeholder={
+              embKeyFromEnv
+                ? "已由环境变量提供（只读）"
+                : embCredential?.configured
+                  ? "已保存，留空则保持不变"
+                  : "粘贴 Embedding API Key"
+            }
+            disabled={embKeyFromEnv || saving || !baseUrl}
+            onChange={(event) => setEmbApiKeyDraft(event.target.value)}
+          />
+          {embKeyFromEnv ? (
+            <span className="field-hint">
+              当前由环境变量 {embApiKeyEnv} 提供
+            </span>
+          ) : null}
+        </div>
+        <div className="field-group input-medium">
+          <label className="field-label" htmlFor="ov-emb-dimension">
+            维度（可选）
+          </label>
+          <input
+            className="text-input"
+            id="ov-emb-dimension"
+            value={embDimension}
+            placeholder="1536"
+            inputMode="numeric"
+            onChange={(event) => setEmbDimension(event.target.value)}
+          />
+        </div>
+        <div className="action-row">
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={saving || !baseUrl}
+            onClick={() => {
+              const dimRaw = embDimension.trim();
+              const dimension =
+                dimRaw === "" ? undefined : Number.parseInt(dimRaw, 10);
+              void saveOpenVikingEmbedding(baseUrl, {
+                baseUrl: embBaseUrl,
+                model: embModel,
+                apiKeyEnv: embApiKeyEnv,
+                dimension:
+                  dimension != null && Number.isFinite(dimension)
+                    ? dimension
+                    : undefined,
+                apiKey: embApiKeyDraft || undefined,
+              }).then(() => setEmbApiKeyDraft(""));
+            }}
+          >
+            {saving ? "保存中…" : "保存 Embedding"}
+          </button>
+        </div>
+      </div>
+
       <div className="memory-status-row">
         <div className="memory-status-left">
           <div className={`mcp-status-pill ${statusPillClass(status)}`}>
@@ -209,7 +363,7 @@ export function MemorySettingsPanel({
         >
           <span className="memory-advanced-title">高级</span>
           <span className="memory-advanced-hint">
-            OV embedding / VLM 模型名覆盖与 MCP URL
+            VLM 模型覆盖与 MCP URL
           </span>
           {advancedOpen ? (
             <ChevronUp width={16} height={16} aria-hidden />
@@ -219,18 +373,6 @@ export function MemorySettingsPanel({
         </button>
         {advancedOpen ? (
           <div className="memory-advanced-body">
-            <div className="field-group input-medium">
-              <label className="field-label" htmlFor="ov-embedding-model">
-                Embedding 模型覆盖
-              </label>
-              <input
-                className="text-input"
-                id="ov-embedding-model"
-                value={embeddingModel}
-                placeholder="留空则按 Provider 默认推断"
-                onChange={(event) => setEmbeddingModel(event.target.value)}
-              />
-            </div>
             <div className="field-group input-medium">
               <label className="field-label" htmlFor="ov-vlm-model">
                 VLM 模型覆盖
@@ -261,13 +403,10 @@ export function MemorySettingsPanel({
                 className="btn btn-primary"
                 disabled={saving || !baseUrl}
                 onClick={() => {
-                  void saveOpenVikingOverrides(baseUrl, {
-                    embeddingModel,
-                    vlmModel,
-                  });
+                  void saveOpenVikingOverrides(baseUrl, { vlmModel });
                 }}
               >
-                {saving ? "保存中…" : "保存覆盖"}
+                {saving ? "保存中…" : "保存 VLM 覆盖"}
               </button>
             </div>
           </div>
@@ -277,7 +416,7 @@ export function MemorySettingsPanel({
       <div className="memory-footer">
         <span className="helper-text">
           OpenViking 以 AGPLv3 提供。见 docs/learning/P2.5-OPENVIKING.md ·
-          自动提炼见 docs/learning/P3-MEMORY-DISTILL.md
+          Embedding 见 P2.5b · 自动提炼见 P3-MEMORY-DISTILL.md
         </span>
         <a
           className="mcp-link"

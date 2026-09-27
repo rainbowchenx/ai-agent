@@ -1,7 +1,7 @@
 # 记忆写路径（任务后提炼）— 设计规格
 
 **日期：** 2026-09-27  
-**状态：** **已确认**  
+**状态：** **已实现**（2026-09-27）  
 **实现计划：** `docs/superpowers/plans/2026-09-27-memory-distill.md`  
 **关联：**  
 - `2026-09-05-agent-runtime-design.md` §6.5（OpenViking / Hooks / MemoryPort 预留）  

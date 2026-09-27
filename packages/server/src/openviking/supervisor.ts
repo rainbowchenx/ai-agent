@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { spawn } from "node:child_process";
 import { promisify } from "node:util";
 import type { AppConfig, OpenVikingStatusView } from "@agent2026/shared";
-import { mapProviderToOvConf, writeOvConf } from "./config-map.js";
+import { mapToOvConf, writeOvConf } from "./config-map.js";
 import {
   OPENVIKING_HOST,
   OPENVIKING_MCP_URL,
@@ -199,13 +199,18 @@ export function createOpenVikingSupervisor(
 
     const defaultName = config.providers.default;
     const entry = config.providers.entries[defaultName];
-    const apiKey = entry
+    const chatApiKey = entry
       ? deps.resolveCredential(entry.apiKeyEnv)
       : undefined;
+    const embeddingApiKeyEnv = config.openviking?.embedding?.apiKeyEnv;
+    const embeddingApiKey = embeddingApiKeyEnv
+      ? deps.resolveCredential(embeddingApiKeyEnv)
+      : undefined;
 
-    const mapped = mapProviderToOvConf({
+    const mapped = mapToOvConf({
       config,
-      apiKey,
+      embeddingApiKey,
+      chatApiKey,
       dataDir: deps.paths.dataDir,
     });
 

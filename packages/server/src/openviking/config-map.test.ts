@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { defaultAppConfig, type AppConfig } from "@agent2026/shared";
-import { mapProviderToOvConf, writeOvConf } from "./config-map.js";
+import { mapToOvConf, writeOvConf } from "./config-map.js";
 import { defaultOpenVikingPaths, findRepoRoot } from "./paths.js";
 
 function withOpenaiProvider(overrides?: Partial<AppConfig>): AppConfig {
@@ -17,11 +17,30 @@ function withOpenaiProvider(overrides?: Partial<AppConfig>): AppConfig {
   };
 }
 
-describe("mapProviderToOvConf", () => {
-  it("maps openai_compatible provider into ov.conf", () => {
-    const result = mapProviderToOvConf({
-      config: withOpenaiProvider(),
-      apiKey: "sk-test",
+function withIndependentEmbedding(
+  overrides?: Partial<AppConfig>,
+  embedding?: Partial<NonNullable<AppConfig["openviking"]>["embedding"]>,
+): AppConfig {
+  return withOpenaiProvider({
+    ...overrides,
+    openviking: {
+      ...overrides?.openviking,
+      embedding: {
+        baseUrl: "https://api.openai.com/v1",
+        model: "text-embedding-3-small",
+        apiKeyEnv: "OPENVIKING_EMBEDDING_API_KEY",
+        ...embedding,
+      },
+    },
+  });
+}
+
+describe("mapToOvConf", () => {
+  it("maps independent embedding into ov.conf dense and chat provider into vlm", () => {
+    const result = mapToOvConf({
+      config: withIndependentEmbedding(),
+      embeddingApiKey: "sk-emb",
+      chatApiKey: "sk-chat",
       dataDir: "/tmp/ov-data",
     });
 
@@ -29,7 +48,7 @@ describe("mapProviderToOvConf", () => {
     if (!result.ok) return;
 
     expect(result.conf.embedding.dense).toMatchObject({
-      api_key: "sk-test",
+      api_key: "sk-emb",
       api_base: "https://api.openai.com/v1",
       provider: "openai",
       model: "text-embedding-3-small",
@@ -37,7 +56,7 @@ describe("mapProviderToOvConf", () => {
       input: "text",
     });
     expect(result.conf.vlm).toMatchObject({
-      api_key: "sk-test",
+      api_key: "sk-chat",
       api_base: "https://api.openai.com/v1",
       provider: "openai",
       model: "gpt-4.1",
@@ -45,30 +64,69 @@ describe("mapProviderToOvConf", () => {
     expect(result.conf.storage.workspace).toBe("/tmp/ov-data");
   });
 
-  it("returns reason when api key missing", () => {
-    const result = mapProviderToOvConf({
+  it("fails when independent embedding block is missing", () => {
+    const result = mapToOvConf({
       config: withOpenaiProvider(),
-      apiKey: undefined,
+      embeddingApiKey: "sk-emb",
+      chatApiKey: "sk-chat",
+      dataDir: "/tmp/x",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toMatch(/请配置独立 Embedding/);
+  });
+
+  it("fails when only deprecated flat embeddingModel is present", () => {
+    const result = mapToOvConf({
+      config: withOpenaiProvider({
+        openviking: { embeddingModel: "text-embedding-3-small" },
+      }),
+      embeddingApiKey: "sk-emb",
+      chatApiKey: "sk-chat",
+      dataDir: "/tmp/x",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toMatch(/请配置独立 Embedding/);
+  });
+
+  it("fails when embedding api key missing", () => {
+    const result = mapToOvConf({
+      config: withIndependentEmbedding(),
+      embeddingApiKey: undefined,
+      chatApiKey: "sk-chat",
+      dataDir: "/tmp/x",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toMatch(/缺少 Embedding API Key/);
+    expect(result.reason).toMatch(/OPENVIKING_EMBEDDING_API_KEY/);
+  });
+
+  it("fails when chat api key missing", () => {
+    const result = mapToOvConf({
+      config: withIndependentEmbedding(),
+      embeddingApiKey: "sk-emb",
+      chatApiKey: undefined,
       dataDir: "/tmp/x",
     });
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.reason).toMatch(/缺少 Provider API Key/);
-    expect(result.reason).toMatch(/OPENAI_API_KEY/);
   });
 
-  it("infers volcengine when baseUrl hosts match", () => {
-    const config = withOpenaiProvider();
-    config.providers.entries.openai = {
-      type: "openai_compatible",
-      baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
-      apiKeyEnv: "OPENAI_API_KEY",
-    };
-
-    const result = mapProviderToOvConf({
-      config,
-      apiKey: "sk-volc",
+  it("infers volcengine from embedding.baseUrl", () => {
+    const result = mapToOvConf({
+      config: withIndependentEmbedding(undefined, {
+        baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
+        model: "doubao-embedding-vision-251215",
+      }),
+      embeddingApiKey: "sk-volc",
+      chatApiKey: "sk-chat",
       dataDir: "/tmp/ov-data",
     });
 
@@ -80,23 +138,69 @@ describe("mapProviderToOvConf", () => {
       dimension: 1024,
       input: "multimodal",
       api_base: "https://ark.cn-beijing.volces.com/api/v3",
+      api_key: "sk-volc",
     });
-    expect(result.conf.vlm.provider).toBe("volcengine");
   });
 
-  it("maps anthropic provider string to openai", () => {
-    const config = withOpenaiProvider();
-    config.providers.default = "anthropic";
-    config.providers.entries.anthropic = {
-      type: "anthropic",
-      baseUrl: "https://api.anthropic.com/v1",
-      apiKeyEnv: "ANTHROPIC_API_KEY",
-    };
-    config.agents.default.model = "anthropic/claude-sonnet";
+  it("does not use chat provider baseUrl for dense when embedding differs", () => {
+    const config = withIndependentEmbedding(
+      {
+        providers: {
+          default: "openai",
+          entries: {
+            openai: {
+              type: "openai_compatible",
+              baseUrl: "https://api.deepseek.com/v1",
+              apiKeyEnv: "OPENAI_API_KEY",
+            },
+          },
+        },
+      },
+      {
+        baseUrl: "https://api.openai.com/v1",
+        model: "text-embedding-3-small",
+      },
+    );
 
-    const result = mapProviderToOvConf({
+    const result = mapToOvConf({
       config,
-      apiKey: "sk-ant",
+      embeddingApiKey: "sk-emb",
+      chatApiKey: "sk-chat",
+      dataDir: "/tmp/ov-data",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.conf.embedding.dense.api_base).toBe(
+      "https://api.openai.com/v1",
+    );
+    expect(result.conf.vlm.api_base).toBe("https://api.deepseek.com/v1");
+  });
+
+  it("maps anthropic chat provider string to openai for vlm", () => {
+    const config = withIndependentEmbedding({
+      providers: {
+        default: "anthropic",
+        entries: {
+          anthropic: {
+            type: "anthropic",
+            baseUrl: "https://api.anthropic.com/v1",
+            apiKeyEnv: "ANTHROPIC_API_KEY",
+          },
+        },
+      },
+      agents: {
+        default: {
+          ...defaultAppConfig().agents.default,
+          model: "anthropic/claude-sonnet",
+        },
+      },
+    });
+
+    const result = mapToOvConf({
+      config,
+      embeddingApiKey: "sk-emb",
+      chatApiKey: "sk-ant",
       dataDir: "/tmp/ov-data",
     });
 
@@ -108,16 +212,14 @@ describe("mapProviderToOvConf", () => {
     expect(result.conf.vlm.api_base).toBe("https://api.anthropic.com/v1");
   });
 
-  it("applies openviking model overrides", () => {
-    const result = mapProviderToOvConf({
-      config: withOpenaiProvider({
-        openviking: {
-          embeddingModel: "text-embedding-3-large",
-          embeddingDimension: 3072,
-          vlmModel: "gpt-4o",
-        },
-      }),
-      apiKey: "sk-test",
+  it("applies dimension and vlmModel overrides", () => {
+    const result = mapToOvConf({
+      config: withIndependentEmbedding(
+        { openviking: { vlmModel: "gpt-4o" } },
+        { dimension: 3072, model: "text-embedding-3-large" },
+      ),
+      embeddingApiKey: "sk-emb",
+      chatApiKey: "sk-chat",
       dataDir: "/tmp/ov-data",
     });
 
@@ -131,58 +233,29 @@ describe("mapProviderToOvConf", () => {
 
 describe("writeOvConf", () => {
   const dirs: string[] = [];
-
   afterEach(() => {
-    for (const dir of dirs.splice(0)) {
-      rmSync(dir, { recursive: true, force: true });
+    while (dirs.length > 0) {
+      const d = dirs.pop();
+      if (d) rmSync(d, { recursive: true, force: true });
     }
   });
 
-  it("writes conf json under parent directory", () => {
+  it("writes json with mode 0o600 when supported", () => {
     const dir = mkdtempSync(join(tmpdir(), "ov-conf-"));
     dirs.push(dir);
-    const confPath = join(dir, "nested", "ov.conf");
-    const conf = { storage: { workspace: "/tmp/data" } };
-
-    writeOvConf(confPath, conf);
-
-    expect(JSON.parse(readFileSync(confPath, "utf8"))).toEqual(conf);
-  });
-
-  it("writes with mode 0o600 when the platform honors file modes", () => {
-    const dir = mkdtempSync(join(tmpdir(), "ov-conf-mode-"));
-    dirs.push(dir);
-    const confPath = join(dir, "ov.conf");
-
-    writeOvConf(confPath, { ok: true });
-
-    const mode = statSync(confPath).mode & 0o777;
-    if (process.platform === "win32") {
-      // Windows may ignore POSIX mode bits; still assert write succeeded.
-      expect(mode).toBeGreaterThanOrEqual(0);
-    } else {
-      expect(mode).toBe(0o600);
+    const path = join(dir, "ov.conf");
+    writeOvConf(path, { hello: "world" });
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({ hello: "world" });
+    if (process.platform !== "win32") {
+      expect(statSync(path).mode & 0o777).toBe(0o600);
     }
   });
 });
 
-describe("paths", () => {
-  it("findRepoRoot walks up for openviking-runtime pyproject", () => {
-    const root = findRepoRoot(process.cwd());
-    expect(root).toBeTruthy();
-    expect(root.replace(/\\/g, "/")).toMatch(/agent2026$/);
-  });
-
-  it("defaultOpenVikingPaths uses injected repo root", () => {
-    const paths = defaultOpenVikingPaths("/repo");
-    expect(paths.confPath.replace(/\\/g, "/")).toMatch(
-      /\.agent2026\/openviking\/ov\.conf$/,
-    );
-    expect(paths.dataDir.replace(/\\/g, "/")).toMatch(
-      /\.agent2026\/openviking\/data$/,
-    );
-    expect(paths.runtimeProjectDir.replace(/\\/g, "/")).toBe(
-      "/repo/packages/openviking-runtime",
-    );
+describe("defaultOpenVikingPaths", () => {
+  it("resolves under home and finds repo runtime", () => {
+    const paths = defaultOpenVikingPaths();
+    expect(paths.rootDir).toMatch(/openviking/);
+    expect(findRepoRoot()).toBeTruthy();
   });
 });

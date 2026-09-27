@@ -31,6 +31,20 @@ function tempPaths() {
   };
 }
 
+function withEmbedding(config: AppConfig): AppConfig {
+  return {
+    ...config,
+    openviking: {
+      ...config.openviking,
+      embedding: {
+        baseUrl: "https://api.openai.com/v1",
+        model: "text-embedding-3-small",
+        apiKeyEnv: "OPENVIKING_EMBEDDING_API_KEY",
+      },
+    },
+  };
+}
+
 function baseConfig(enabled: boolean): AppConfig {
   const config = defaultAppConfig();
   if (enabled) {
@@ -42,6 +56,7 @@ function baseConfig(enabled: boolean): AppConfig {
         enabled: true,
       },
     };
+    return withEmbedding(config);
   }
   return config;
 }
@@ -113,9 +128,33 @@ describe("OpenVikingSupervisor", () => {
     });
   });
 
-  it("enabled + no key → needs_config", async () => {
+  it("enabled + no embedding block → needs_config", async () => {
+    const deps = makeDeps();
+    const supervisor = createOpenVikingSupervisor(deps);
+    const config = defaultAppConfig();
+    config.mcpServers = {
+      [OPENVIKING_SERVER_NAME]: {
+        transport: "http",
+        url: OPENVIKING_MCP_URL,
+        httpSubtype: "streamable",
+        enabled: true,
+      },
+    };
+
+    await supervisor.reconcile(config);
+
+    expect(deps.spawnServer).not.toHaveBeenCalled();
+    expect(supervisor.getStatus()).toMatchObject({
+      status: "needs_config",
+      enabled: true,
+    });
+    expect(supervisor.getStatus().lastError).toMatch(/请配置独立 Embedding/);
+  });
+
+  it("enabled + no embedding key → needs_config", async () => {
     const deps = makeDeps({
-      resolveCredential: () => undefined,
+      resolveCredential: (ref) =>
+        ref === "OPENVIKING_EMBEDDING_API_KEY" ? undefined : "sk-chat",
     });
     const supervisor = createOpenVikingSupervisor(deps);
 
@@ -124,6 +163,23 @@ describe("OpenVikingSupervisor", () => {
     expect(deps.ensureRuntime).toHaveBeenCalledOnce();
     expect(deps.spawnServer).not.toHaveBeenCalled();
     expect(deps.writeConfigPreset).not.toHaveBeenCalled();
+    expect(supervisor.getStatus()).toMatchObject({
+      status: "needs_config",
+      enabled: true,
+    });
+    expect(supervisor.getStatus().lastError).toMatch(/缺少 Embedding API Key/);
+  });
+
+  it("enabled + no chat key → needs_config", async () => {
+    const deps = makeDeps({
+      resolveCredential: (ref) =>
+        ref === "OPENVIKING_EMBEDDING_API_KEY" ? "sk-emb" : undefined,
+    });
+    const supervisor = createOpenVikingSupervisor(deps);
+
+    await supervisor.reconcile(baseConfig(true));
+
+    expect(deps.spawnServer).not.toHaveBeenCalled();
     expect(supervisor.getStatus()).toMatchObject({
       status: "needs_config",
       enabled: true,

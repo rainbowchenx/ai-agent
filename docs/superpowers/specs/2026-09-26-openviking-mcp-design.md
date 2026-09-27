@@ -19,7 +19,7 @@
 
 1. **仓库内 Python 依赖：** 用 uv + `pyproject.toml`（+ lock）锁定 `openviking`，不依赖用户全局盲装；不把 OV 写进 `packages/core`。
 2. **内置拉起：** Agent Server 在启用条件下自动 sync / 写配置 / spawn `openviking-server`，并做 `/health` 探测。
-3. **密钥复用：** 从现有 AppConfig Provider（默认 Agent 所用）映射写出/补齐 OV 配置（embedding；若可推断则含 VLM）；设置页可覆盖 OV 专用模型字段。
+3. **密钥 / 模型映射：** VLM 仍复用默认聊天 Provider；**embedding 改为独立配置**（`openviking.embedding`，见 `2026-09-27-openviking-embedding-config-design.md` / P2.5b）。启用 OV 时 embedding 必填。
 4. **MCP 预设：** 健康后确保 `mcpServers.openviking` 为 HTTP `http://127.0.0.1:1933/mcp`（或配置的本机 URL），并进入既有 `McpSupervisor` reconcile；工具名 `openviking__{tool}`。
 5. **按需生命周期：** 仅当 `mcpServers.openviking.enabled === true` 时拉起（设置「长期记忆」开关只改该字段，无第二真相源）；关闭则停止**本 Supervisor 拉起的**子进程并断开 MCP session。
 6. **降级诚实：** 失败不阻塞 Server listen / 对话；状态可观测；UI 有原因与重试。
@@ -50,7 +50,7 @@
 |----|------|
 | 接入形态 | **HTTP MCP**（非嵌入 SDK、非 MemoryPort） |
 | 服务端落盘 | **仓库 uv/`pyproject` 锁定 `openviking`**，Agent Server 拉起 |
-| 配置来源 | **复用 Provider 密钥**写/补 `ov.conf`；设置可覆盖 OV 模型字段 |
+| 配置来源 | **VLM 复用聊天 Provider**；**embedding 独立**（P2.5b） |
 | 拉起时机 | **`mcpServers.openviking.enabled === true` 时** reconcile/启动链拉起；关闭则停自拉起进程 |
 | 数据目录 | **`~/.agent2026/openviking/`**（配置 + OV 数据）；与 `data.sqlite` 并列 |
 | 端口 / MCP URL | 默认 **`127.0.0.1:1933`**，MCP **`http://127.0.0.1:1933/mcp`** |

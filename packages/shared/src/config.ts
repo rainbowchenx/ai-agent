@@ -79,8 +79,19 @@ export const appConfigSchema = z
     }),
     openviking: z
       .object({
+        embedding: z
+          .object({
+            baseUrl: z.string().min(1),
+            model: z.string().min(1),
+            apiKeyEnv: z.string().min(1),
+            dimension: z.number().int().positive().optional(),
+            provider: z.enum(["openai", "volcengine"]).optional(),
+          })
+          .optional(),
+        /** @deprecated Prefer `embedding.model`; kept for read compatibility. */
         embeddingModel: z.string().min(1).optional(),
         vlmModel: z.string().min(1).optional(),
+        /** @deprecated Prefer `embedding.dimension`. */
         embeddingDimension: z.number().int().positive().optional(),
         autoDistill: z.boolean().default(true),
       })

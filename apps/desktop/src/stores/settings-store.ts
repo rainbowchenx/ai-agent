@@ -55,8 +55,15 @@ export type McpServerSaveInput = {
   mount: boolean;
 };
 
+export type OpenVikingEmbeddingSaveInput = {
+  baseUrl: string;
+  model: string;
+  apiKeyEnv: string;
+  dimension?: number;
+  apiKey?: string;
+};
+
 export type OpenVikingOverridesInput = {
-  embeddingModel: string;
   vlmModel: string;
 };
 
@@ -77,6 +84,10 @@ type SettingsStore = {
   retryOpenVikingStatus: (baseUrl: string) => Promise<void>;
   setOpenVikingEnabled: (baseUrl: string, enabled: boolean) => Promise<void>;
   setAutoDistill: (baseUrl: string, enabled: boolean) => Promise<void>;
+  saveOpenVikingEmbedding: (
+    baseUrl: string,
+    input: OpenVikingEmbeddingSaveInput,
+  ) => Promise<void>;
   saveOpenVikingOverrides: (
     baseUrl: string,
     input: OpenVikingOverridesInput,
@@ -98,27 +109,41 @@ type SettingsStore = {
   clearHints: () => void;
 };
 
-/** Serialize openviking so autoDistill is never wiped when clearing model overrides. */
+/** Serialize openviking; never write deprecated flat embedding keys. */
 function serializeOpenViking(ov: {
-  embeddingModel?: string;
+  embedding?: NonNullable<AppConfig["openviking"]>["embedding"];
   vlmModel?: string;
-  embeddingDimension?: number;
   autoDistill?: boolean;
 }): AppConfig["openviking"] | undefined {
-  const next: NonNullable<AppConfig["openviking"]> = {};
-  if (ov.embeddingModel) {
-    next.embeddingModel = ov.embeddingModel;
+  const next: {
+    embedding?: NonNullable<AppConfig["openviking"]>["embedding"];
+    vlmModel?: string;
+    autoDistill?: boolean;
+  } = {};
+  if (
+    ov.embedding?.baseUrl &&
+    ov.embedding.model &&
+    ov.embedding.apiKeyEnv
+  ) {
+    next.embedding = {
+      baseUrl: ov.embedding.baseUrl,
+      model: ov.embedding.model,
+      apiKeyEnv: ov.embedding.apiKeyEnv,
+      ...(ov.embedding.dimension != null
+        ? { dimension: ov.embedding.dimension }
+        : {}),
+      ...(ov.embedding.provider ? { provider: ov.embedding.provider } : {}),
+    };
   }
   if (ov.vlmModel) {
     next.vlmModel = ov.vlmModel;
   }
-  if (ov.embeddingDimension != null) {
-    next.embeddingDimension = ov.embeddingDimension;
-  }
   if (typeof ov.autoDistill === "boolean") {
     next.autoDistill = ov.autoDistill;
   }
-  return Object.keys(next).length > 0 ? next : undefined;
+  return Object.keys(next).length > 0
+    ? (next as AppConfig["openviking"])
+    : undefined;
 }
 
 function credentialsToMap(items: CredentialInfo[]): Record<string, CredentialInfo> {
@@ -319,9 +344,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       const next: AppConfig = {
         ...current,
         openviking: serializeOpenViking({
-          embeddingModel: current.openviking?.embeddingModel,
+          embedding: current.openviking?.embedding,
           vlmModel: current.openviking?.vlmModel,
-          embeddingDimension: current.openviking?.embeddingDimension,
           autoDistill: enabled,
         }),
       };
@@ -346,18 +370,76 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
   },
 
+  saveOpenVikingEmbedding: async (baseUrl, input) => {
+    const current = ensureConfig(get().config);
+    set({ saving: true, error: null, saveHint: null });
+    try {
+      const embBaseUrl = input.baseUrl.trim();
+      const model = input.model.trim();
+      const apiKeyEnv = input.apiKeyEnv.trim();
+      if (!embBaseUrl || !model || !apiKeyEnv) {
+        throw new Error("请填写 Embedding 的 Base URL、模型名与 API Key 环境变量");
+      }
+      const next: AppConfig = {
+        ...current,
+        openviking: serializeOpenViking({
+          embedding: {
+            baseUrl: embBaseUrl,
+            model,
+            apiKeyEnv,
+            ...(input.dimension != null && input.dimension > 0
+              ? { dimension: input.dimension }
+              : {}),
+          },
+          vlmModel: current.openviking?.vlmModel,
+          autoDistill: current.openviking?.autoDistill,
+        }),
+      };
+      const saved = await putConfig(baseUrl, next);
+      let credentials = get().credentials;
+      const trimmedKey = input.apiKey?.trim();
+      if (trimmedKey) {
+        const info = await putCredential(baseUrl, apiKeyEnv, trimmedKey);
+        credentials = { ...credentials, [info.ref]: info };
+      } else {
+        try {
+          const list = await fetchCredentials(baseUrl);
+          credentials = credentialsToMap(list.items);
+        } catch {
+          // keep previous map
+        }
+      }
+      const openVikingStatus = await retryOpenViking(baseUrl).catch(() =>
+        fetchOpenVikingStatus(baseUrl),
+      );
+      syncSessionConfig(saved);
+      set({
+        config: saved,
+        credentials,
+        openVikingStatus,
+        saving: false,
+        saveHint: "已保存 Embedding 配置",
+        error: null,
+      });
+    } catch (err) {
+      set({
+        saving: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
+  },
+
   saveOpenVikingOverrides: async (baseUrl, input) => {
     const current = ensureConfig(get().config);
     set({ saving: true, error: null, saveHint: null });
     try {
-      const embeddingModel = input.embeddingModel.trim();
       const vlmModel = input.vlmModel.trim();
       const next: AppConfig = {
         ...current,
         openviking: serializeOpenViking({
-          embeddingModel: embeddingModel || undefined,
+          embedding: current.openviking?.embedding,
           vlmModel: vlmModel || undefined,
-          embeddingDimension: current.openviking?.embeddingDimension,
           autoDistill: current.openviking?.autoDistill,
         }),
       };
@@ -370,7 +452,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         config: saved,
         openVikingStatus,
         saving: false,
-        saveHint: "已保存 OpenViking 模型覆盖",
+        saveHint: "已保存 VLM 覆盖",
         error: null,
       });
     } catch (err) {

@@ -202,6 +202,55 @@ describe("parseAppConfig", () => {
     expect(config.openviking?.embeddingModel).toBe("text-embedding-3-small");
   });
 
+  it("accepts independent openviking.embedding endpoint", () => {
+    const config = parseAppConfig({
+      ...defaultAppConfig(),
+      openviking: {
+        embedding: {
+          baseUrl: "https://api.openai.com/v1",
+          model: "text-embedding-3-small",
+          apiKeyEnv: "OPENVIKING_EMBEDDING_API_KEY",
+          dimension: 1536,
+          provider: "openai",
+        },
+        autoDistill: true,
+      },
+    });
+    expect(config.openviking?.embedding).toMatchObject({
+      baseUrl: "https://api.openai.com/v1",
+      model: "text-embedding-3-small",
+      apiKeyEnv: "OPENVIKING_EMBEDDING_API_KEY",
+      dimension: 1536,
+      provider: "openai",
+    });
+  });
+
+  it("rejects openviking.embedding when required subfields are missing", () => {
+    expect(() =>
+      parseAppConfig({
+        ...defaultAppConfig(),
+        openviking: {
+          embedding: {
+            baseUrl: "https://api.openai.com/v1",
+            model: "text-embedding-3-small",
+          },
+        },
+      }),
+    ).toThrow();
+  });
+
+  it("still accepts deprecated flat embeddingModel alongside nesting", () => {
+    const config = parseAppConfig({
+      ...defaultAppConfig(),
+      openviking: {
+        embeddingModel: "text-embedding-3-small",
+        embeddingDimension: 1536,
+      },
+    });
+    expect(config.openviking?.embeddingModel).toBe("text-embedding-3-small");
+    expect(config.openviking?.embeddingDimension).toBe(1536);
+  });
+
   it("defaults autoDistill to true when openviking block omits it", () => {
     const config = parseAppConfig({
       ...defaultAppConfig(),
