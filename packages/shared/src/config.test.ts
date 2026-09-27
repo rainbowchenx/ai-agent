@@ -202,6 +202,22 @@ describe("parseAppConfig", () => {
     expect(config.openviking?.embeddingModel).toBe("text-embedding-3-small");
   });
 
+  it("defaults autoDistill to true when openviking block omits it", () => {
+    const config = parseAppConfig({
+      ...defaultAppConfig(),
+      openviking: { embeddingModel: "text-embedding-3-small" },
+    });
+    expect(config.openviking?.autoDistill).toBe(true);
+  });
+
+  it("accepts autoDistill false", () => {
+    const config = parseAppConfig({
+      ...defaultAppConfig(),
+      openviking: { autoDistill: false },
+    });
+    expect(config.openviking?.autoDistill).toBe(false);
+  });
+
   it("rejects illegal mcpServers key characters", () => {
     expect(() =>
       parseAppConfig({

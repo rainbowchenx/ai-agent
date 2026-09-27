@@ -25,6 +25,17 @@ export {
   type RunEvent,
 } from "./events.js";
 export {
+  distillDraftItemSchema,
+  distillModelOutputSchema,
+  memoryItemSchema,
+  memoryKindSchema,
+  memoryStatusSchema,
+  type DistillDraftItem,
+  type DistillLastStatus,
+  type DistillStatusView,
+  type MemoryItem,
+} from "./memory-item.js";
+export {
   type CreateSessionRequest,
   type CreateSessionResponse,
   type GetConfigResponse,

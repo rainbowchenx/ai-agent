@@ -1,5 +1,7 @@
 import type { AppConfig } from "./config.js";
 
+export type { DistillLastStatus, DistillStatusView } from "./memory-item.js";
+
 export type HealthResponse = {
   ok: true;
   version: string;

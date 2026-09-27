@@ -82,6 +82,7 @@ export const appConfigSchema = z
         embeddingModel: z.string().min(1).optional(),
         vlmModel: z.string().min(1).optional(),
         embeddingDimension: z.number().int().positive().optional(),
+        autoDistill: z.boolean().default(true),
       })
       .optional(),
   })
