@@ -32,7 +32,7 @@ export const distillDraftItemSchema = z.object({
   when: z.string(),
   do: z.string(),
   outcome: z.string(),
-  confidence: z.number(),
+  confidence: z.number().min(0).max(1),
 });
 
 export const distillModelOutputSchema = z.object({

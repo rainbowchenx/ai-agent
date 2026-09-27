@@ -215,10 +215,13 @@ async function startRun(
           runId,
           sessionId: request.sessionId,
           traceId,
-          messages: newMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: [
+            { role: "user", content: userMessage.content },
+            ...newMessages.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          ],
         });
       } catch (err) {
         console.warn(

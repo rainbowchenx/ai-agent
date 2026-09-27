@@ -150,9 +150,14 @@ describe("run completed enqueues memory distill", () => {
     expect(job.traceId).toEqual(expect.any(String));
     expect(job.messages).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ role: "user", content: "say hello" }),
         expect.objectContaining({ role: "assistant", content: "hello" }),
       ]),
     );
+    expect(job.messages[0]).toMatchObject({
+      role: "user",
+      content: "say hello",
+    });
   });
 
   it("does not enqueue after stop", async () => {
