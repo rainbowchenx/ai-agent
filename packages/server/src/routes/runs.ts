@@ -7,6 +7,7 @@ import type {
   WsClientMessage,
 } from "@agent2026/shared";
 import { assembleRuntime } from "../assemble/runtime.js";
+import type { MemoryConsolidator } from "../memory/consolidator.js";
 import type { PermissionBroker } from "../permissions/permission-broker.js";
 import type { McpSupervisor } from "../mcp/supervisor.js";
 import type {
@@ -27,6 +28,7 @@ export type RunRouteDeps = {
   workspaceRoot: string;
   resolveCredential?: (ref: string) => string | undefined;
   mcp?: McpSupervisor;
+  memory?: MemoryConsolidator;
 };
 
 type WsSocket = {
@@ -204,6 +206,26 @@ async function startRun(
       send(socket, toRunEvent(pendingEnd));
     } else {
       await recorder.flush();
+    }
+
+    if (pendingEnd?.reason === "completed" && deps.memory) {
+      try {
+        const newMessages = result.messages.slice(skip);
+        deps.memory.enqueue({
+          runId,
+          sessionId: request.sessionId,
+          traceId,
+          messages: newMessages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        });
+      } catch (err) {
+        console.warn(
+          "[memory] enqueue failed:",
+          err instanceof Error ? err.message : err,
+        );
+      }
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
