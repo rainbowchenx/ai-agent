@@ -8,6 +8,7 @@ import type {
 } from "@agent2026/shared";
 import { assembleRuntime } from "../assemble/runtime.js";
 import type { MemoryConsolidator } from "../memory/consolidator.js";
+import type { MemoryRecaller } from "../memory/recaller.js";
 import type { PermissionBroker } from "../permissions/permission-broker.js";
 import type { McpSupervisor } from "../mcp/supervisor.js";
 import type {
@@ -29,6 +30,7 @@ export type RunRouteDeps = {
   resolveCredential?: (ref: string) => string | undefined;
   mcp?: McpSupervisor;
   memory?: MemoryConsolidator;
+  memoryRecaller?: MemoryRecaller;
 };
 
 type WsSocket = {
@@ -156,8 +158,28 @@ async function startRun(
       mcp: deps.mcp,
     });
 
-    const history: AgentMessage[] = runtime.systemPrompt
-      ? [{ role: "system", content: runtime.systemPrompt }, ...prior]
+    let recallBlock = "";
+    if (deps.memoryRecaller) {
+      try {
+        recallBlock = await deps.memoryRecaller.resolveForRun({
+          sessionId: request.sessionId,
+          userText: request.content,
+          runId,
+        });
+      } catch (err) {
+        console.warn(
+          "[memory-recall] resolve failed:",
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+
+    const systemContent = [runtime.systemPrompt, recallBlock]
+      .filter((part) => typeof part === "string" && part.trim().length > 0)
+      .join("\n\n");
+
+    const history: AgentMessage[] = systemContent
+      ? [{ role: "system", content: systemContent }, ...prior]
       : prior;
 
     const sessionId = request.sessionId;
@@ -194,7 +216,7 @@ async function startRun(
       traceId,
     });
 
-    const skip = (runtime.systemPrompt ? 1 : 0) + prior.length + 1;
+    const skip = (systemContent ? 1 : 0) + prior.length + 1;
     await deps.sessionStore.appendMessagesBatch(
       request.sessionId,
       result.messages.slice(skip),

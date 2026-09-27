@@ -84,6 +84,7 @@ type SettingsStore = {
   retryOpenVikingStatus: (baseUrl: string) => Promise<void>;
   setOpenVikingEnabled: (baseUrl: string, enabled: boolean) => Promise<void>;
   setAutoDistill: (baseUrl: string, enabled: boolean) => Promise<void>;
+  setAutoRecall: (baseUrl: string, enabled: boolean) => Promise<void>;
   saveOpenVikingEmbedding: (
     baseUrl: string,
     input: OpenVikingEmbeddingSaveInput,
@@ -114,11 +115,13 @@ function serializeOpenViking(ov: {
   embedding?: NonNullable<AppConfig["openviking"]>["embedding"];
   vlmModel?: string;
   autoDistill?: boolean;
+  autoRecall?: boolean;
 }): AppConfig["openviking"] | undefined {
   const next: {
     embedding?: NonNullable<AppConfig["openviking"]>["embedding"];
     vlmModel?: string;
     autoDistill?: boolean;
+    autoRecall?: boolean;
   } = {};
   if (
     ov.embedding?.baseUrl &&
@@ -140,6 +143,9 @@ function serializeOpenViking(ov: {
   }
   if (typeof ov.autoDistill === "boolean") {
     next.autoDistill = ov.autoDistill;
+  }
+  if (typeof ov.autoRecall === "boolean") {
+    next.autoRecall = ov.autoRecall;
   }
   return Object.keys(next).length > 0
     ? (next as AppConfig["openviking"])
@@ -347,6 +353,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           embedding: current.openviking?.embedding,
           vlmModel: current.openviking?.vlmModel,
           autoDistill: enabled,
+          autoRecall: current.openviking?.autoRecall,
         }),
       };
       const saved = await putConfig(baseUrl, next);
@@ -359,6 +366,36 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         distillStatus,
         saving: false,
         saveHint: enabled ? "已开启自动提炼" : "已关闭自动提炼",
+        error: null,
+      });
+    } catch (err) {
+      set({
+        saving: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
+  },
+
+  setAutoRecall: async (baseUrl, enabled) => {
+    const current = ensureConfig(get().config);
+    set({ saving: true, error: null, saveHint: null });
+    try {
+      const next: AppConfig = {
+        ...current,
+        openviking: serializeOpenViking({
+          embedding: current.openviking?.embedding,
+          vlmModel: current.openviking?.vlmModel,
+          autoDistill: current.openviking?.autoDistill,
+          autoRecall: enabled,
+        }),
+      };
+      const saved = await putConfig(baseUrl, next);
+      syncSessionConfig(saved);
+      set({
+        config: saved,
+        saving: false,
+        saveHint: enabled ? "已开启自动召回" : "已关闭自动召回",
         error: null,
       });
     } catch (err) {
@@ -393,6 +430,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           },
           vlmModel: current.openviking?.vlmModel,
           autoDistill: current.openviking?.autoDistill,
+          autoRecall: current.openviking?.autoRecall,
         }),
       };
       const saved = await putConfig(baseUrl, next);
@@ -441,6 +479,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           embedding: current.openviking?.embedding,
           vlmModel: vlmModel || undefined,
           autoDistill: current.openviking?.autoDistill,
+          autoRecall: current.openviking?.autoRecall,
         }),
       };
       const saved = await putConfig(baseUrl, next);

@@ -94,6 +94,7 @@ export const appConfigSchema = z
         /** @deprecated Prefer `embedding.dimension`. */
         embeddingDimension: z.number().int().positive().optional(),
         autoDistill: z.boolean().default(true),
+        autoRecall: z.boolean().default(true),
       })
       .optional(),
   })

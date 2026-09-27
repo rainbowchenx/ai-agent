@@ -267,6 +267,22 @@ describe("parseAppConfig", () => {
     expect(config.openviking?.autoDistill).toBe(false);
   });
 
+  it("defaults autoRecall to true when openviking block omits it", () => {
+    const config = parseAppConfig({
+      ...defaultAppConfig(),
+      openviking: { autoDistill: true },
+    });
+    expect(config.openviking?.autoRecall).toBe(true);
+  });
+
+  it("accepts autoRecall false", () => {
+    const config = parseAppConfig({
+      ...defaultAppConfig(),
+      openviking: { autoRecall: false },
+    });
+    expect(config.openviking?.autoRecall).toBe(false);
+  });
+
   it("rejects illegal mcpServers key characters", () => {
     expect(() =>
       parseAppConfig({

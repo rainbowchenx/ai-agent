@@ -76,6 +76,7 @@ export function MemorySettingsPanel({
   const saving = useSettingsStore((s) => s.saving);
   const setOpenVikingEnabled = useSettingsStore((s) => s.setOpenVikingEnabled);
   const setAutoDistill = useSettingsStore((s) => s.setAutoDistill);
+  const setAutoRecall = useSettingsStore((s) => s.setAutoRecall);
   const saveOpenVikingEmbedding = useSettingsStore(
     (s) => s.saveOpenVikingEmbedding,
   );
@@ -93,6 +94,7 @@ export function MemorySettingsPanel({
     openVikingStatus?.enabled ??
     config.mcpServers?.openviking?.enabled === true;
   const autoDistill = config.openviking?.autoDistill !== false;
+  const autoRecall = config.openviking?.autoRecall !== false;
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [embBaseUrl, setEmbBaseUrl] = useState(
@@ -212,6 +214,31 @@ export function MemorySettingsPanel({
             disabled={saving || !baseUrl}
             onChange={(event) => {
               void setAutoDistill(baseUrl, event.target.checked);
+            }}
+          />
+          <span className="slider" />
+        </label>
+      </div>
+
+      <div className="switch-row">
+        <div className="switch-label">
+          <span className="switch-title">自动召回长期记忆</span>
+          <span className="switch-desc">
+            开新对话时检索相关冻结记忆并注入；同会话复用，线索句可刷新
+          </span>
+          {!ovReady ? (
+            <span className="switch-desc memory-distill-inactive">
+              当前未生效：OpenViking 未就绪
+            </span>
+          ) : null}
+        </div>
+        <label className="switch" aria-label="自动召回长期记忆">
+          <input
+            type="checkbox"
+            checked={autoRecall}
+            disabled={saving || !baseUrl}
+            onChange={(event) => {
+              void setAutoRecall(baseUrl, event.target.checked);
             }}
           />
           <span className="slider" />
@@ -415,8 +442,7 @@ export function MemorySettingsPanel({
 
       <div className="memory-footer">
         <span className="helper-text">
-          OpenViking 以 AGPLv3 提供。见 docs/learning/P2.5-OPENVIKING.md ·
-          Embedding 见 P2.5b · 自动提炼见 P3-MEMORY-DISTILL.md
+          OpenViking 以 AGPLv3 提供。见 P2.5 / P2.5b · 提炼 P3 · 召回 P4
         </span>
         <a
           className="mcp-link"

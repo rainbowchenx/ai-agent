@@ -18,6 +18,10 @@ import {
   type MemoryConsolidator,
 } from "./memory/consolidator.js";
 import {
+  createMemoryRecaller,
+  type MemoryRecaller,
+} from "./memory/recaller.js";
+import {
   createDefaultEnsureRuntime,
   createDefaultOpenVikingHealthCheck,
   createDefaultSpawnServer,
@@ -69,6 +73,8 @@ export type CreateAppOptions = {
   skipOpenVikingReconcile?: boolean;
   /** Injected memory consolidator (tests); default creates a real one. */
   memory?: MemoryConsolidator;
+  /** Injected memory recaller (tests); default creates a real one. */
+  memoryRecaller?: MemoryRecaller;
 };
 
 export async function createApp(
@@ -201,6 +207,14 @@ export async function createApp(
         }).model,
     });
 
+  const memoryRecaller =
+    options.memoryRecaller ??
+    createMemoryRecaller({
+      getConfig: () => configService.get(),
+      getOpenVikingStatus: () => openViking.getStatus(),
+      getOpenVikingPort: () => mcp.getPort(OPENVIKING_SERVER_NAME),
+    });
+
   const app = Fastify({ logger: false });
   app.addHook("onClose", async () => {
     unsubscribeConfig();
@@ -240,7 +254,7 @@ export async function createApp(
       return openViking.getStatus();
     },
   });
-  registerMemoryRoutes(app, { memory });
+  registerMemoryRoutes(app, { memory, memoryRecaller, sessionStore });
   registerCredentialRoutes(app, {
     store: credentials,
     getConfig: () => configService.get(),
@@ -257,6 +271,7 @@ export async function createApp(
     resolveCredential: (ref) => credentials.resolve(ref),
     mcp,
     memory,
+    memoryRecaller,
   });
   registerTraceRoutes(app, { sessionStore, tracePort });
 

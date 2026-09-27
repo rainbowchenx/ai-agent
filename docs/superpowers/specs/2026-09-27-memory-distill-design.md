@@ -344,7 +344,7 @@ docs/learning/P3-MEMORY-DISTILL.md      # 冒烟短记
 
 ## 12. 明确延后（下一刀候选）
 
-1. **读路径：** `before_model` auto-recall / 系统前缀注入冻结记忆。  
+1. **读路径：** ~~`before_model` auto-recall~~ → 见 `2026-09-27-memory-recall-design.md`（已实现：会话级选择性召回）。  
 2. **MemoryPort** 抽象。  
 3. **探索冻结**（RSI §3.2）。  
 4. **候选审阅 UI** / 手动「立即沉淀」。  
