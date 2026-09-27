@@ -1,6 +1,7 @@
 import type {
   AppConfig,
   CredentialInfo,
+  DistillStatusView,
   McpServerConfig,
   McpServerStatusView,
   OpenVikingStatusView,
@@ -10,6 +11,7 @@ import { create } from "zustand";
 import {
   fetchConfig,
   fetchCredentials,
+  fetchDistillStatus,
   fetchMcpStatus,
   fetchOpenVikingStatus,
   fetchSystem,
@@ -64,6 +66,7 @@ type SettingsStore = {
   system: SystemPathsResponse | null;
   mcpStatus: McpServerStatusView[];
   openVikingStatus: OpenVikingStatusView | null;
+  distillStatus: DistillStatusView | null;
   loading: boolean;
   saving: boolean;
   error: string | null;
@@ -73,6 +76,7 @@ type SettingsStore = {
   refreshOpenVikingStatus: (baseUrl: string) => Promise<void>;
   retryOpenVikingStatus: (baseUrl: string) => Promise<void>;
   setOpenVikingEnabled: (baseUrl: string, enabled: boolean) => Promise<void>;
+  setAutoDistill: (baseUrl: string, enabled: boolean) => Promise<void>;
   saveOpenVikingOverrides: (
     baseUrl: string,
     input: OpenVikingOverridesInput,
@@ -93,6 +97,29 @@ type SettingsStore = {
   refreshMcpTools: (baseUrl: string, name: string) => Promise<void>;
   clearHints: () => void;
 };
+
+/** Serialize openviking so autoDistill is never wiped when clearing model overrides. */
+function serializeOpenViking(ov: {
+  embeddingModel?: string;
+  vlmModel?: string;
+  embeddingDimension?: number;
+  autoDistill?: boolean;
+}): AppConfig["openviking"] | undefined {
+  const next: NonNullable<AppConfig["openviking"]> = {};
+  if (ov.embeddingModel) {
+    next.embeddingModel = ov.embeddingModel;
+  }
+  if (ov.vlmModel) {
+    next.vlmModel = ov.vlmModel;
+  }
+  if (ov.embeddingDimension != null) {
+    next.embeddingDimension = ov.embeddingDimension;
+  }
+  if (typeof ov.autoDistill === "boolean") {
+    next.autoDistill = ov.autoDistill;
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
+}
 
 function credentialsToMap(items: CredentialInfo[]): Record<string, CredentialInfo> {
   const map: Record<string, CredentialInfo> = {};
@@ -119,6 +146,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   system: null,
   mcpStatus: [],
   openVikingStatus: null,
+  distillStatus: null,
   loading: false,
   saving: false,
   error: null,
@@ -132,13 +160,14 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
     set({ loading: true, error: null });
     try {
-      const [config, creds, system, mcpStatus, openVikingStatus] =
+      const [config, creds, system, mcpStatus, openVikingStatus, distillStatus] =
         await Promise.all([
           fetchConfig(baseUrl),
           fetchCredentials(baseUrl),
           fetchSystem(baseUrl).catch(() => null),
           fetchMcpStatus(baseUrl).catch(() => [] as McpServerStatusView[]),
           fetchOpenVikingStatus(baseUrl).catch(() => null),
+          fetchDistillStatus(baseUrl).catch(() => null),
         ]);
       syncSessionConfig(config);
       set({
@@ -147,6 +176,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         system,
         mcpStatus,
         openVikingStatus,
+        distillStatus,
         loading: false,
         error: null,
       });
@@ -282,37 +312,54 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
   },
 
+  setAutoDistill: async (baseUrl, enabled) => {
+    const current = ensureConfig(get().config);
+    set({ saving: true, error: null, saveHint: null });
+    try {
+      const next: AppConfig = {
+        ...current,
+        openviking: serializeOpenViking({
+          embeddingModel: current.openviking?.embeddingModel,
+          vlmModel: current.openviking?.vlmModel,
+          embeddingDimension: current.openviking?.embeddingDimension,
+          autoDistill: enabled,
+        }),
+      };
+      const saved = await putConfig(baseUrl, next);
+      const distillStatus = await fetchDistillStatus(baseUrl).catch(
+        () => get().distillStatus,
+      );
+      syncSessionConfig(saved);
+      set({
+        config: saved,
+        distillStatus,
+        saving: false,
+        saveHint: enabled ? "已开启自动提炼" : "已关闭自动提炼",
+        error: null,
+      });
+    } catch (err) {
+      set({
+        saving: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
+  },
+
   saveOpenVikingOverrides: async (baseUrl, input) => {
     const current = ensureConfig(get().config);
     set({ saving: true, error: null, saveHint: null });
     try {
       const embeddingModel = input.embeddingModel.trim();
       const vlmModel = input.vlmModel.trim();
-      const openviking = {
-        ...(current.openviking ?? {}),
-        ...(embeddingModel
-          ? { embeddingModel }
-          : { embeddingModel: undefined }),
-        ...(vlmModel ? { vlmModel } : { vlmModel: undefined }),
-      };
-      const hasOverrides =
-        Boolean(openviking.embeddingModel) ||
-        Boolean(openviking.vlmModel) ||
-        openviking.embeddingDimension != null;
-
       const next: AppConfig = {
         ...current,
-        openviking: hasOverrides
-          ? {
-              ...(openviking.embeddingModel
-                ? { embeddingModel: openviking.embeddingModel }
-                : {}),
-              ...(openviking.vlmModel ? { vlmModel: openviking.vlmModel } : {}),
-              ...(openviking.embeddingDimension != null
-                ? { embeddingDimension: openviking.embeddingDimension }
-                : {}),
-            }
-          : undefined,
+        openviking: serializeOpenViking({
+          embeddingModel: embeddingModel || undefined,
+          vlmModel: vlmModel || undefined,
+          embeddingDimension: current.openviking?.embeddingDimension,
+          autoDistill: current.openviking?.autoDistill,
+        }),
       };
       const saved = await putConfig(baseUrl, next);
       const openVikingStatus = await fetchOpenVikingStatus(baseUrl).catch(

@@ -875,7 +875,7 @@ body {
   gap: 0;
 }
 
-.memory-panel .switch-row {
+.memory-panel > .switch-row:first-of-type {
   margin: 0;
   padding-top: 0;
 }

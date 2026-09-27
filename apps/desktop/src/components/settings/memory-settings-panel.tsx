@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import type { AppConfig, OpenVikingStatus } from "@agent2026/shared";
+import type {
+  AppConfig,
+  DistillStatusView,
+  OpenVikingStatus,
+} from "@agent2026/shared";
 import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
 
@@ -42,6 +46,20 @@ function statusDetailText(
   return null;
 }
 
+function distillStatusText(status: DistillStatusView): string | null {
+  if (status.lastStatus === "idle") {
+    return null;
+  }
+  const parts: string[] = [`上次提炼：${status.lastStatus}`];
+  if (status.lastWritten != null) {
+    parts.push(`写入 ${status.lastWritten}`);
+  }
+  if (status.lastMessage) {
+    parts.push(status.lastMessage);
+  }
+  return parts.join(" · ");
+}
+
 export function MemorySettingsPanel({
   baseUrl,
   config,
@@ -52,8 +70,10 @@ export function MemorySettingsPanel({
   onScrollToModels: () => void;
 }) {
   const openVikingStatus = useSettingsStore((s) => s.openVikingStatus);
+  const distillStatus = useSettingsStore((s) => s.distillStatus);
   const saving = useSettingsStore((s) => s.saving);
   const setOpenVikingEnabled = useSettingsStore((s) => s.setOpenVikingEnabled);
+  const setAutoDistill = useSettingsStore((s) => s.setAutoDistill);
   const saveOpenVikingOverrides = useSettingsStore(
     (s) => s.saveOpenVikingOverrides,
   );
@@ -67,6 +87,7 @@ export function MemorySettingsPanel({
   const enabled =
     openVikingStatus?.enabled ??
     config.mcpServers?.openviking?.enabled === true;
+  const autoDistill = config.openviking?.autoDistill !== false;
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [embeddingModel, setEmbeddingModel] = useState(
@@ -90,6 +111,7 @@ export function MemorySettingsPanel({
   }, [baseUrl, openVikingStatus?.status, refreshOpenVikingStatus]);
 
   const status = openVikingStatus?.status ?? "stopped";
+  const ovReady = status === "ready";
   const detail = openVikingStatus
     ? statusDetailText(
         openVikingStatus.status,
@@ -98,6 +120,7 @@ export function MemorySettingsPanel({
       )
     : null;
   const mcpUrl = openVikingStatus?.mcpUrl ?? OPENVIKING_MCP_URL_DISPLAY;
+  const lastDistill = distillStatus ? distillStatusText(distillStatus) : null;
 
   return (
     <div className="memory-panel" data-settings-memory-panel>
@@ -115,6 +138,34 @@ export function MemorySettingsPanel({
             disabled={saving || !baseUrl}
             onChange={(event) => {
               void setOpenVikingEnabled(baseUrl, event.target.checked);
+            }}
+          />
+          <span className="slider" />
+        </label>
+      </div>
+
+      <div className="switch-row">
+        <div className="switch-label">
+          <span className="switch-title">run 结束后自动提炼</span>
+          <span className="switch-desc">
+            将本轮对话要点写入 OpenViking（需服务就绪）
+          </span>
+          {!ovReady ? (
+            <span className="switch-desc memory-distill-inactive">
+              当前未生效：OpenViking 未就绪
+            </span>
+          ) : null}
+          {lastDistill ? (
+            <span className="switch-desc memory-distill-last">{lastDistill}</span>
+          ) : null}
+        </div>
+        <label className="switch" aria-label="run 结束后自动提炼">
+          <input
+            type="checkbox"
+            checked={autoDistill}
+            disabled={saving || !baseUrl}
+            onChange={(event) => {
+              void setAutoDistill(baseUrl, event.target.checked);
             }}
           />
           <span className="slider" />
@@ -225,7 +276,8 @@ export function MemorySettingsPanel({
 
       <div className="memory-footer">
         <span className="helper-text">
-          OpenViking 以 AGPLv3 提供。见 docs/learning/P2.5-OPENVIKING.md
+          OpenViking 以 AGPLv3 提供。见 docs/learning/P2.5-OPENVIKING.md ·
+          自动提炼见 docs/learning/P3-MEMORY-DISTILL.md
         </span>
         <a
           className="mcp-link"

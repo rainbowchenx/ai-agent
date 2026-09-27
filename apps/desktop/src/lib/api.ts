@@ -2,6 +2,7 @@ import type {
   AppConfig,
   CreateSessionResponse,
   CredentialInfo,
+  DistillStatusView,
   GetRunTraceResponse,
   GetSessionResponse,
   HealthResponse,
@@ -210,4 +211,14 @@ export async function retryOpenViking(
     );
   }
   return (await res.json()) as OpenVikingStatusView;
+}
+
+export async function fetchDistillStatus(
+  baseUrl: string,
+): Promise<DistillStatusView> {
+  const res = await fetch(`${baseUrl}/memory/distill/status`);
+  if (!res.ok) {
+    throw new Error(`distill status ${res.status}`);
+  }
+  return (await res.json()) as DistillStatusView;
 }
